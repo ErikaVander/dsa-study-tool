@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Google Drive sync artifacts
+.tmp.driveupload
+.tmp.drivedownload
+
+# Claude Code local-only settings
+.claude/settings.local.json
+
+# Personal/per-user data — never goes in the public repo (lives in Firebase later)
+private/
+
+# Editor/OS noise
+*.swp
+Thumbs.db

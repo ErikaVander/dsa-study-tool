@@ -1,0 +1,101 @@
+{
+  "id": "lesson-1.2",
+  "title": "1.2 Arrays & Strings",
+  "date": "2026-04-01",
+  "summary": "List operations and their complexities. String immutability gotcha. Traversal patterns. Hashmap intro via is_anagram.",
+  "sessionNotes": "Good instincts on data structure choice; needed reminders on Python syntax; caught bugs with guidance.",
+  "intro": "List access is O(1), insert at front is O(n) (shifts everything). Strings are immutable — `+=` in a loop is O(n²). Build with a list + `\"\".join()` instead. Prefer `enumerate` over `range(len(...))`. The anagram problem introduces dict-as-counter — key is the character, value is how many times it appeared.",
+  "sectionConcepts": {
+    "intro": "list-insert-front-cost"
+  },
+  "body": [
+    {
+      "type": "prose",
+      "heading": "List operations and their complexities",
+      "content": "Index access is O(1). Append to the end is O(1) amortized. Insert at the FRONT is O(n) — every other element has to shift right by one."
+    },
+    {
+      "type": "code",
+      "heading": "List ops — fast vs slow",
+      "runnable": true,
+      "content": "lst = [10, 20, 30]\n\n# O(1) — direct index\nprint(lst[1])\n\n# O(1) amortized — append to end\nlst.append(40)\nprint(lst)\n\n# O(n) — insert at front shifts everything right\nlst.insert(0, 0)\nprint(lst)"
+    },
+    {
+      "type": "prose",
+      "heading": "String immutability — the gotcha",
+      "content": "Strings are IMMUTABLE in Python. Every `+=` builds a NEW string by copying the previous one. Across n iterations, that's 1+2+...+n = O(n²) work.\n\nThe canonical fix: collect parts in a list, then `\"\".join()` at the end → O(n) total."
+    },
+    {
+      "type": "code",
+      "heading": "BAD: O(n²) via string +=",
+      "runnable": true,
+      "content": "def build_string_bad(chars):\n    result = \"\"\n    for c in chars:\n        result += c  # new string every time!\n    return result\n\nprint(build_string_bad([\"h\", \"e\", \"l\", \"l\", \"o\"]))"
+    },
+    {
+      "type": "code",
+      "heading": "GOOD: O(n) via join",
+      "runnable": true,
+      "content": "def build_string_good(chars):\n    parts = []\n    for c in chars:\n        parts.append(c)\n    return \"\".join(parts)\n\nprint(build_string_good([\"h\", \"e\", \"l\", \"l\", \"o\"]))"
+    },
+    {
+      "type": "prose",
+      "heading": "Traversal patterns",
+      "content": "Three common shapes:\n  1. Values only: `for item in lst:`\n  2. Index + value: `for i, item in enumerate(lst):` — preferred over `range(len(...))`\n  3. Reverse: `for item in reversed(lst):` — or `range(len(s)-1, -1, -1)` if you need the index too"
+    }
+  ],
+  "exercises": [
+    {
+      "id": "1.2-e1",
+      "title": "Exercise 1 — find_index",
+      "prompt": "Write find_index(lst, target): return the index of the first occurrence of target, or -1 if not found. Use enumerate.",
+      "userAnswer": "",
+      "critique": "Clean. Correctly uses enumerate, returns -1 on miss. Standard linear search.",
+      "concept": "enumerate-idiom",
+      "tests": [
+        "assert find_index([1, 2, 3], 2) == 1",
+        "assert find_index([1, 2, 3], 99) == -1",
+        "assert find_index([], 1) == -1",
+        "assert find_index([5, 5, 5], 5) == 0"
+      ]
+    },
+    {
+      "id": "1.2-e2",
+      "title": "Exercise 2 — reverse_string (no built-ins)",
+      "prompt": "Write reverse_string(s): take a string and return it reversed. Do NOT use Python's built-in reversed() or [::-1]. Think about what data structure to build your result in.",
+      "userAnswer": "",
+      "critique": "Correct and idiomatic. Builds with a list to avoid the string-immutability O(n²) trap, joins at the end. The `range(len(s)-1, -1, -1)` is the canonical reverse-index pattern — also the one that keeps resetting in the review queue.",
+      "concept": "range-reverse-traversal",
+      "tests": [
+        "assert reverse_string(\"abc\") == \"cba\"",
+        "assert reverse_string(\"\") == \"\"",
+        "assert reverse_string(\"a\") == \"a\"",
+        "assert reverse_string(\"hello\") == \"olleh\""
+      ]
+    },
+    {
+      "id": "1.2-e3",
+      "title": "Exercise 3 — is_anagram",
+      "prompt": "Write is_anagram(s1, s2): True if s2 is an anagram of s1. Same characters, same counts, different order.",
+      "userAnswer": "",
+      "critique": "Works correctly. Good instinct: short-circuit on length mismatch. Two-pass: build counts from s1, decrement on s2. The `-1` check catches the case where s2 has more of a letter than s1 — though once length is equal AND no missing letters, you don't strictly need it. Refinement: `d[k] = d.get(k, 0) + 1` would replace the if/else block in one line — that's the counting idiom that keeps coming up.",
+      "concept": "dict-counter-idiom",
+      "tests": [
+        "assert is_anagram(\"listen\", \"silent\") is True",
+        "assert is_anagram(\"hello\", \"world\") is False",
+        "assert is_anagram(\"abc\", \"abcd\") is False",
+        "assert is_anagram(\"\", \"\") is True",
+        "assert is_anagram(\"aab\", \"abb\") is False"
+      ]
+    }
+  ],
+  "reviewItemsAdded": [
+    "String immutability — `+=` in loop is O(n²)",
+    "Use `\"\".join(list)` syntax",
+    "`lst.insert(0, val)` is O(n) — elements shift",
+    "`enumerate` over `range(len(...))`",
+    "`range(len(s)-1, -1, -1)` for reverse traversal",
+    "Dict syntax: `{}`, `d[key] = val`, `if key in d`",
+    "Dict as hashmap — choosing what the value represents"
+  ],
+  "qa": []
+}

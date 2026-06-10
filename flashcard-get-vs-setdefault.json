@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "cards": [
+    {
+      "id": "c-dict-get-vs-setdefault",
+      "categoryId": "cat-py-dict",
+      "order": 90,
+      "front": ".get vs .setdefault difference",
+      "back": "`.get` reads only. `.setdefault` reads **and inserts** the default on a miss.\n\nCOUNTING uses `.get` — you reassign, so reading is enough:\n```\nd[k] = d.get(k, 0) + 1\n        └── read current (or 0) ──┘\n└── write the new count back ──┘\n```\nGROUPING uses `.setdefault` — you append in place, so the list must already live in the dict:\n```\nd.setdefault(k, []).append(v)\n└─ if missing: store [] and return it ─┘\n                    └─ append onto the SAME list in the dict ─┘\n```\n`.get(k, []).append(v)` would append to a throwaway list → lost. Anchor: default **0** = counting, **[]** = grouping.",
+      "concept": "dict-get"
+    }
+  ],
+  "reviewQueue": []
+}

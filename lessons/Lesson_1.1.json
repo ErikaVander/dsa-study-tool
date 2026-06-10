@@ -1,0 +1,107 @@
+{
+  "id": "lesson-1.1",
+  "title": "1.1 Big O & Complexity Analysis",
+  "date": "2026-04-01",
+  "summary": "Recognize O(1), O(n), O(n²), O(log n). Analyze unknown functions. Write functions to match a target complexity.",
+  "sessionNotes": "Solid on recognition; tripped on space vs time distinction and Python list mutation.",
+  "intro": "Big O describes how runtime / memory scale with input size. Drop constants, drop smaller terms, default to worst case. Recursive calls count: each call is work + a stack frame. Space and time are independent — a fast algorithm can still be memory-hungry.",
+  "sectionConcepts": {
+    "intro": "bigo-hierarchy",
+    "summary": "bigo-hierarchy"
+  },
+  "body": [
+    {
+      "type": "prose",
+      "heading": "Big O — what it measures",
+      "content": "Big O describes how runtime / memory scale with input size, not absolute speed.\n\nRules of thumb:\n  - Drop constants (3n becomes O(n))\n  - Drop smaller terms (n² + n becomes O(n²))\n  - Default to worst case unless explicitly told otherwise\n\nTime and space are independent. A fast algorithm can still use a lot of memory; a slow one can use very little."
+    },
+    {
+      "type": "code",
+      "heading": "O(1) — constant time",
+      "runnable": true,
+      "content": "def get_first(lst):\n    return lst[0]\n\n# Regardless of list size, this does one lookup.\nprint(get_first([1, 2, 3]))\nprint(get_first(list(range(1000000))))"
+    },
+    {
+      "type": "code",
+      "heading": "O(n) — linear time",
+      "runnable": true,
+      "content": "def find_max(lst):\n    current_max = lst[0]\n    for num in lst:\n        if num > current_max:\n            current_max = num\n    return current_max\n\nprint(find_max([3, 1, 4, 1, 5, 9, 2, 6]))"
+    },
+    {
+      "type": "code",
+      "heading": "O(n²) — quadratic time",
+      "runnable": true,
+      "content": "def all_pairs(lst):\n    pairs = []\n    for i in lst:\n        for j in lst:\n            pairs.append((i, j))\n    return pairs\n\n# A loop inside a loop. If n doubles, work quadruples.\nprint(all_pairs([1, 2, 3]))"
+    },
+    {
+      "type": "code",
+      "heading": "O(log n) — logarithmic time",
+      "runnable": true,
+      "content": "def binary_search(lst, target):\n    left, right = 0, len(lst) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if lst[mid] == target:\n            return mid\n        elif lst[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1\n\n# Each step cuts remaining work in half.\nprint(binary_search([1, 3, 5, 7, 9, 11], 7))"
+    }
+  ],
+  "exercises": [
+    {
+      "id": "1.1-p1",
+      "title": "Problem 1 — Analyze mystery_1",
+      "prompt": "def mystery_1(n):\n    total = 0\n    for i in range(n):\n        for j in range(n):\n            total += 1\n        total += 1\n    return total\n\nWhat is the TIME and SPACE complexity?",
+      "userAnswer": "",
+      "critique": "Nested loop over n × n → O(n²) time. Only a constant number of variables → O(1) space. The trailing `total += 1` outside the inner loop doesn't change the asymptotic class — drop smaller terms."
+    },
+    {
+      "id": "1.1-p2",
+      "title": "Problem 2 — Analyze mystery_2",
+      "prompt": "def mystery_2(lst):\n    result = []\n    for item in lst:\n        result.append(item * 2)\n    return result",
+      "userAnswer": "",
+      "critique": "Single pass through lst → O(n) time. Result grows to size n → O(n) extra space. This is the canonical \"map\" pattern."
+    },
+    {
+      "id": "1.1-p3",
+      "title": "Problem 3 — Analyze mystery_3",
+      "prompt": "def mystery_3(n):\n    i = n\n    while i > 1:\n        i = i // 2",
+      "userAnswer": "",
+      "critique": "Halving each step → O(log n) time, O(1) space. Same shape as binary search. Note: `//` floors toward -∞, not toward zero — a recurring gotcha."
+    },
+    {
+      "id": "1.1-p4",
+      "title": "Problem 4 — Analyze mystery_4 (recursive)",
+      "prompt": "def mystery_4(lst):\n    if len(lst) <= 1:\n        return True\n    if lst[0] != lst[-1]:\n        return False\n    return mystery_4(lst[1:-1])",
+      "userAnswer": "",
+      "critique": "Recursion of depth n/2, each call slices the list (O(n) copy). Total time: O(n²) due to slicing. Space: O(n) — the slice copies and the call stack. This is a palindrome check; slicing makes it more expensive than it looks. Lesson: `lst[1:-1]` is a COPY, not a view."
+    },
+    {
+      "id": "1.1-c1",
+      "title": "Challenge 1 — Write O(n) time, O(n) space",
+      "prompt": "Write a function that has O(n) time and O(n) space.",
+      "userAnswer": "",
+      "critique": "Correct. Single pass copy. O(n) time (one loop), O(n) space (new list of size n). This is essentially what `lst.copy()` does.",
+      "tests": [
+        "assert mystery_5([1, 2, 3]) == [1, 2, 3]",
+        "assert mystery_5([]) == []",
+        "assert mystery_5([42]) == [42]"
+      ]
+    },
+    {
+      "id": "1.1-c2",
+      "title": "Challenge 2 — Write O(n²) time, O(1) space",
+      "prompt": "Write a function that has O(n²) time and O(1) space.",
+      "userAnswer": "",
+      "critique": "Correct shape — nested loops give O(n²). Print to stdout is side-effect only, no growing data structure → O(1) space."
+    },
+    {
+      "id": "1.1-c3",
+      "title": "Challenge 3 — Write O(1) time, O(1) space",
+      "prompt": "Write a function that has O(1) time and O(1) space.",
+      "userAnswer": "",
+      "critique": "Correct. Single operation regardless of n. Constant time, constant space."
+    }
+  ],
+  "reviewItemsAdded": [
+    "`//` floor division vs `/`",
+    "`[-1]` negative indexing",
+    "Recursive calls count as time complexity",
+    "`lst[1:-1]` creates a copy (Python gotcha)",
+    "Never modify a list while iterating over it"
+  ],
+  "qa": []
+}

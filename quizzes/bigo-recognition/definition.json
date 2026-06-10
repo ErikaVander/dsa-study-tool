@@ -1,0 +1,86 @@
+{
+  "id": "quiz-bigo-mc",
+  "title": "Big O recognition (MC)",
+  "questions": [
+    {
+      "type": "mc",
+      "prompt": "Binary search on a sorted array of length n",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+      "correct": 1,
+      "concept": "bigo-hierarchy",
+      "explanation": "Each comparison throws away half the remaining elements: n → n/2 → n/4 → … You can only halve n about log₂n times before one element is left. Halving the problem each step is the signature of logarithmic time.",
+      "visual": "16 → 8 → 4 → 2 → 1\n └─ halve each step ─┘\n log₂16 = 4 steps",
+      "cardBack": "Each step halves the search space → log₂n steps → O(log n)"
+    },
+    {
+      "type": "mc",
+      "prompt": "Hash map lookup, average case",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+      "correct": 0,
+      "concept": "bigo-hierarchy",
+      "explanation": "A hash function maps the key straight to a slot index, so lookup jumps directly there with no scanning — constant time on average. (Worst case is O(n) if many keys collide into one spot.)",
+      "visual": "key ──hash()──▶ slot 3 ──▶ value\n        (jump straight there, no scan)",
+      "cardBack": "hash(key) → slot index directly, no scan → O(1) average"
+    },
+    {
+      "type": "mc",
+      "prompt": "Merge sort on n elements",
+      "options": ["O(n)", "O(n log n)", "O(n²)", "O(2ⁿ)"],
+      "correct": 1,
+      "concept": "bigo-hierarchy",
+      "explanation": "Splitting in half repeatedly creates log n levels. Merging the pieces at each level touches all n elements once. log n levels × n work per level = O(n log n).",
+      "visual": "[8 7 5 1 | 6 4 3 2]\n   ↓  split → log n levels\n[8][7][5][1][6][4][3][2]\n   ↑  merge → n per level\n[1 2 3 4 5 6 7 8]",
+      "cardBack": "split in half → log n levels; merge → n per level → O(n log n)"
+    },
+    {
+      "type": "mc",
+      "prompt": "Generating all permutations of n items",
+      "options": ["O(n²)", "O(2ⁿ)", "O(n!)", "O(n log n)"],
+      "correct": 2,
+      "concept": "bigo-hierarchy",
+      "explanation": "A permutation is an ordering. There are n choices for the first slot, n−1 for the second, n−2 for the third, … down to 1: n × (n−1) × … × 1 = n!.",
+      "visual": "slot:  1st    2nd    3rd\n        n  ×  n-1  × n-2 … × 1  = n!\n3 items → 3! = 6 orderings",
+      "cardBack": "arrange in order: n × (n−1) × … × 1 = n!"
+    },
+    {
+      "type": "mc",
+      "prompt": "Generating all subsets of n items",
+      "options": ["O(n²)", "O(2ⁿ)", "O(n!)", "O(n log n)"],
+      "correct": 1,
+      "concept": "bigo-hierarchy",
+      "explanation": "Build a subset by deciding IN or OUT for each item — n independent yes/no choices, 2 options each: 2 × 2 × … × 2 = 2ⁿ. (Contrast permutations, which arrange in order → n!.)",
+      "visual": "each item → IN or OUT?  (2 choices)\n  a     b     c\n  2  ×  2  ×  2  = 2³ = 8",
+      "cardBack": "n in/out yes-no choices → 2ⁿ"
+    },
+    {
+      "type": "mc",
+      "prompt": "Single pass over an n-element list",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+      "correct": 2,
+      "concept": "bigo-hierarchy",
+      "explanation": "One loop visits each of the n elements exactly once, doing constant work each time: n × O(1) = O(n).",
+      "visual": "[• • • • • • • •]\n →→→→→→→→  visit each once\n n elements → O(n)",
+      "cardBack": "visit each of n elements once → O(n)"
+    },
+    {
+      "type": "mc",
+      "prompt": "Inserting at index 0 of a Python list of length n",
+      "options": ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+      "correct": 2,
+      "concept": "list-insert-front-cost",
+      "explanation": "A Python list is a contiguous array. Inserting at the front means every existing element must shift one slot to the right to make room — n shifts. (Appending to the end is O(1) amortized.)",
+      "visual": "insert x at 0:\n[a b c d]\n ↓ shift all right\n[x a b c d]\n n elements moved → O(n)",
+      "cardBack": "front insert shifts all n elements right → O(n)"
+    },
+    {
+      "type": "mc",
+      "prompt": "Building a string with += over n single-char iterations",
+      "options": ["O(n)", "O(n log n)", "O(n²)", "O(2ⁿ)"],
+      "correct": 2,
+      "concept": "string-immutability-on-loop",
+      "explanation": "Strings are immutable, so each += builds a brand-new string and copies every character so far. Copying 1 + 2 + … + n characters totals n(n+1)/2 = O(n²). Collect into a list and \"\".join() at the end for O(n).",
+      "visual": "+= copies the string-so-far each time:\n 1 + 2 + 3 + … + n = n(n+1)/2 → O(n²)\nfix: list.append + \"\".join → O(n)",
+      "cardBack": "immutable string → each += copies all chars; 1+2+…+n = O(n²). Use \"\".join → O(n)"
+    }
+  ]
+}

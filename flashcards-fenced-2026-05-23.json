@@ -1,0 +1,712 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "cat-py-lists",
+      "name": "Python — Lists & strings",
+      "summary": "Sequence indexing, slicing, immutability, join.",
+      "order": 0
+    },
+    {
+      "id": "cat-py-iter",
+      "name": "Python — Iteration",
+      "summary": "enumerate, range, lazy iteration.",
+      "order": 1
+    },
+    {
+      "id": "cat-py-num",
+      "name": "Python — Numbers",
+      "summary": "Floor division and friends.",
+      "order": 2
+    },
+    {
+      "id": "cat-py-id",
+      "name": "Python — Identity",
+      "summary": "is vs ==, None checks.",
+      "order": 3
+    },
+    {
+      "id": "cat-py-dict",
+      "name": "Python — Dict",
+      "summary": "Dict ops, .get, .pop, counting idiom.",
+      "order": 4
+    },
+    {
+      "id": "cat-py-set",
+      "name": "Python — Set",
+      "summary": "Set ops, dedup, operators.",
+      "order": 5
+    },
+    {
+      "id": "cat-ll",
+      "name": "Linked Lists",
+      "summary": "ListNode, traversal, reverse, remove.",
+      "order": 6
+    },
+    {
+      "id": "cat-hash",
+      "name": "Hash Maps & Sets",
+      "summary": "Internals: hashing, collisions, resize.",
+      "order": 7
+    },
+    {
+      "id": "cat-patterns",
+      "name": "Patterns",
+      "summary": "Two Sum, count-then-scan, grouping.",
+      "order": 8
+    },
+    {
+      "id": "cat-bigo",
+      "name": "Big O",
+      "summary": "Complexity classes, rules, nuances.",
+      "order": 9
+    },
+    {
+      "id": "cat-habits",
+      "name": "Habits",
+      "summary": "Interview-style practice habits.",
+      "order": 10
+    },
+    {
+      "id": "cat-gotchas",
+      "name": "Gotchas",
+      "summary": "Things that break in subtle ways.",
+      "order": 11
+    },
+    {
+      "id": "cat-mobx-angular",
+      "name": "MobX & Angular (wod-log)",
+      "summary": "Reactivity, computeds, DI, lazy routing, migrations — from your own app.",
+      "order": 12
+    }
+  ],
+  "cards": [
+    {
+      "id": "c-neg-idx",
+      "categoryId": "cat-py-lists",
+      "order": 0,
+      "front": "lst[-1]",
+      "back": "Last element. Negative indexing: -1 = last, -2 = second-to-last, etc. Works on any sequence (list, string, tuple).",
+      "concept": "negative-indexing"
+    },
+    {
+      "id": "c-slicing",
+      "categoryId": "cat-py-lists",
+      "order": 1,
+      "front": "lst[1:-1] — what's the rule?",
+      "back": "Start INCLUSIVE, stop EXCLUSIVE (same as range). Strips first AND last elements. Returns a COPY (new list, allocates memory).",
+      "concept": "slicing-rules"
+    },
+    {
+      "id": "c-insert-0",
+      "categoryId": "cat-py-lists",
+      "order": 2,
+      "front": "lst.insert(0, x) — complexity?",
+      "back": "O(n). Every element shifts one position to the right.",
+      "concept": "list-insert-front-cost"
+    },
+    {
+      "id": "c-join",
+      "categoryId": "cat-py-lists",
+      "order": 3,
+      "front": "Concatenate a list of strings efficiently",
+      "back": "\"\".join(lst). O(n). Call on the separator, pass the list. Avoids the O(n²) trap of repeated +=.",
+      "concept": "string-join"
+    },
+    {
+      "id": "c-str-immut",
+      "categoryId": "cat-py-lists",
+      "order": 4,
+      "front": "Why is s += char in a loop O(n²)?",
+      "back": "Strings are IMMUTABLE. Each += builds a NEW string and copies the old contents. Across n iterations: 1+2+...+n = O(n²). Use a list + .join() instead.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 0
+      },
+      "concept": "string-immutability-on-loop"
+    },
+    {
+      "id": "c-enumerate",
+      "categoryId": "cat-py-iter",
+      "order": 0,
+      "front": "Loop with index and value",
+      "back": "for i, item in enumerate(lst): ...   Prefer over range(len(...)).",
+      "concept": "enumerate-idiom"
+    },
+    {
+      "id": "c-range-rev",
+      "categoryId": "cat-py-iter",
+      "order": 1,
+      "front": "Reverse traversal of indices for a list s",
+      "back": "range(len(s) - 1, -1, -1). Start inclusive, stop exclusive, step -1.  Note: the -1 in stop is the integer below 0, NOT s[-1].",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.4",
+        "exerciseId": "1.4-q4"
+      },
+      "concept": "range-reverse-traversal"
+    },
+    {
+      "id": "c-range-lazy",
+      "categoryId": "cat-py-iter",
+      "order": 2,
+      "front": "Is range() lazy or eager?",
+      "back": "Lazy. A range object stores start/stop/step and computes values on demand. range(10**9) allocates almost nothing. Materialize with list(range(...)) if you need a real list.",
+      "concept": "range-lazy"
+    },
+    {
+      "id": "c-floor",
+      "categoryId": "cat-py-num",
+      "order": 0,
+      "front": "// floor division — precise rule",
+      "back": "Floors toward -∞. The LARGEST integer ≤ the true quotient. Equivalent: 'the integer to the LEFT on the number line.'  7 // 2 = 3.  -7 // 2 = -4 (NOT -3 — that would be truncation).",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.3",
+        "exerciseId": "1.3-q1"
+      },
+      "concept": "floor-division"
+    },
+    {
+      "id": "c-is-none",
+      "categoryId": "cat-py-id",
+      "order": 0,
+      "front": "is None vs == None",
+      "back": "Use 'is None'. `is` checks identity (same object). `==` calls __eq__, which custom classes can override (e.g. numpy arrays do element-wise). None is a singleton — identity IS the question. PEP 8 mandates it.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 7
+      },
+      "concept": "is-none-check"
+    },
+    {
+      "id": "c-dict-basics",
+      "categoryId": "cat-py-dict",
+      "order": 0,
+      "front": "Dict basics",
+      "back": "```\nd = {}\nd[k] = v\nif k in d: ...\nd[k]   # raises KeyError if missing\n```\nLookup/insert is O(1) average.",
+      "concept": "dict-basics"
+    },
+    {
+      "id": "c-del-d",
+      "categoryId": "cat-py-dict",
+      "order": 1,
+      "front": "del d[k]",
+      "back": "Removes the key. Raises KeyError if missing.",
+      "concept": "dict-del"
+    },
+    {
+      "id": "c-pop",
+      "categoryId": "cat-py-dict",
+      "order": 2,
+      "front": "d.pop(k, default)",
+      "back": "Removes AND returns the value at k. If k missing and default given, returns default (no error). Safer than `del` when uncertain.",
+      "concept": "dict-pop"
+    },
+    {
+      "id": "c-get",
+      "categoryId": "cat-py-dict",
+      "order": 3,
+      "front": "d.get(k, default)",
+      "back": "Returns d[k] if present, else default. No error. Doesn't modify d.",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.4",
+        "exerciseId": "1.4-q1"
+      },
+      "concept": "dict-get"
+    },
+    {
+      "id": "c-counter",
+      "categoryId": "cat-py-dict",
+      "order": 4,
+      "front": "Counter idiom (increment count for k)",
+      "back": "```\nd[k] = d.get(k, 0) + 1\n```\nTreats missing as 0. Standard frequency-counter pattern.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 2
+      },
+      "concept": "dict-counter-idiom"
+    },
+    {
+      "id": "c-setdefault",
+      "categoryId": "cat-py-dict",
+      "order": 5,
+      "front": "Grouping idiom — append v to list at key k",
+      "back": "```\nd.setdefault(k, []).append(v)\n```\nCreates empty list if k missing, then appends. Used for grouping (e.g. anagrams). Alternative: collections.defaultdict(list).",
+      "concept": "dict-setdefault-grouping"
+    },
+    {
+      "id": "c-dict-keys",
+      "categoryId": "cat-py-dict",
+      "order": 6,
+      "front": "Restriction on dict keys",
+      "back": "Must be HASHABLE (i.e. immutable). Strings, ints, tuples work. Lists, sets, dicts do not (their hash would change if mutated).",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 8
+      },
+      "concept": "dict-keys-hashable"
+    },
+    {
+      "id": "c-set-add",
+      "categoryId": "cat-py-set",
+      "order": 0,
+      "front": "Add an element to a set",
+      "back": "s.add(x). NOT .append(). Sets are unordered — there's no 'end' to append to.",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.4",
+        "exerciseId": "1.4-q2"
+      },
+      "concept": "set-add-vs-append"
+    },
+    {
+      "id": "c-set-dedup",
+      "categoryId": "cat-py-set",
+      "order": 1,
+      "front": "Dedup a list / detect duplicates",
+      "back": "```\nset(lst)                 → drops duplicates\nlen(set(x)) != len(x)    → has duplicates\n```",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.4",
+        "exerciseId": "1.4-q3"
+      },
+      "concept": "set-dedup-duplicates"
+    },
+    {
+      "id": "c-set-ops",
+      "categoryId": "cat-py-set",
+      "order": 2,
+      "front": "Set operators &, |, -, ^",
+      "back": "```\n&  intersection (∩)\n|  union (∪)\n-  difference\n^  symmetric difference (in one but not both)\n```\nExample: {1,2,3} & {2,3,4} = {2,3};  {1,2,3} ^ {2,3,4} = {1,4}",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 4
+      },
+      "concept": "set-operators"
+    },
+    {
+      "id": "c-listnode",
+      "categoryId": "cat-ll",
+      "order": 0,
+      "front": "ListNode class",
+      "back": "```\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n```\nA linked list is just a head pointer to the first node — no separate list object.",
+      "sourceRef": {
+        "type": "lesson-section",
+        "lessonId": "lesson-1.4",
+        "section": "intro"
+      },
+      "concept": "ll-listnode-class"
+    },
+    {
+      "id": "c-ll-traverse",
+      "categoryId": "cat-ll",
+      "order": 1,
+      "front": "Canonical singly-linked-list traversal",
+      "back": "```\ncurrent = head\nwhile current is not None:\n    # do work\n    current = current.next\n```\nLoop on `current`, NOT `current.next`. The alternative crashes on empty list AND skips the last node.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 14
+      },
+      "concept": "ll-canonical-traversal"
+    },
+    {
+      "id": "c-ll-reverse",
+      "categoryId": "cat-ll",
+      "order": 2,
+      "front": "3-pointer reverse of a singly linked list",
+      "back": "```\ndef reverse_list(head):\n    prev = None\n    curr = head\n    while curr is not None:\n        next_node = curr.next   # save before overwriting\n        curr.next = prev\n        prev = curr\n        curr = next_node\n    return prev   # new head = old tail\n```",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 17
+      },
+      "concept": "ll-3pointer-reverse"
+    },
+    {
+      "id": "c-ll-3ptr-why",
+      "categoryId": "cat-ll",
+      "order": 3,
+      "front": "Why three pointers in reverse?",
+      "back": "prev — what should come AFTER curr in the reversed list (no back pointer exists, so we track it)\ncurr — the node being processed\nnext_node — saved BEFORE `curr.next = prev` overwrites it; without it the rest of the list is unreachable.",
+      "concept": "ll-3pointer-why"
+    },
+    {
+      "id": "c-ll-remove",
+      "categoryId": "cat-ll",
+      "order": 4,
+      "front": "Remove a node from a singly linked list (given pointer to target)",
+      "back": "Walk from head until curr.next is target, then curr.next = target.next.\nCan't do it with just the target pointer — singly linked = no back pointer.\nSpecial case: target is head → update head and return new head.",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.4",
+        "exerciseId": "1.4-e4"
+      },
+      "concept": "ll-remove-node"
+    },
+    {
+      "id": "c-hash-int",
+      "categoryId": "cat-hash",
+      "order": 0,
+      "front": "Hash table — how lookup works",
+      "back": "Contiguous array of slots. Hash function maps key → slot index. O(1) average because hashing jumps directly to the slot, no scanning.",
+      "concept": "hash-internals"
+    },
+    {
+      "id": "c-hash-coll",
+      "categoryId": "cat-hash",
+      "order": 1,
+      "front": "Hash collisions are handled by ___",
+      "back": "Probing. CPython uses open addressing — walk to the next empty slot when there's a collision.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 9
+      },
+      "concept": "hash-collisions-probing"
+    },
+    {
+      "id": "c-hash-resize",
+      "categoryId": "cat-hash",
+      "order": 2,
+      "front": "When does a Python dict resize?",
+      "back": "At ~2/3 load factor. Allocates a larger array and rehashes every entry.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 10
+      },
+      "concept": "hash-resize-load"
+    },
+    {
+      "id": "c-amortized",
+      "categoryId": "cat-hash",
+      "order": 3,
+      "front": "Amortized O(1) — what does it mean?",
+      "back": "Most inserts are O(1). The rare O(n) resize, spread over the n inserts that triggered it, averages to O(1) per insert. 'Amortized' = averaged across a sequence of operations.",
+      "sourceRef": {
+        "type": "lesson-exercise",
+        "lessonId": "lesson-1.4",
+        "exerciseId": "1.4-q6"
+      },
+      "concept": "amortized-O1"
+    },
+    {
+      "id": "c-dict-vs-set",
+      "categoryId": "cat-hash",
+      "order": 4,
+      "front": "Dict vs set — when to use each",
+      "back": "Need to RETURN a value (index, count, anything) → dict\nJust need yes/no membership → set\nA set stores NO value — only membership.",
+      "concept": "dict-vs-set-rule"
+    },
+    {
+      "id": "c-two-sum",
+      "categoryId": "cat-patterns",
+      "order": 0,
+      "front": "Two Sum — what goes in the dict?",
+      "back": "key = the number itself; value = its index.\nFor each element x, check if target - x is already in the dict; if so, return [seen[target-x], current_index]. O(n).",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 15
+      },
+      "concept": "two-sum-dict-design"
+    },
+    {
+      "id": "c-cont-dup",
+      "categoryId": "cat-patterns",
+      "order": 1,
+      "front": "Contains Duplicate — one-liner",
+      "back": "```\nreturn len(set(nums)) != len(nums)\n```\nO(n) time, O(n) space.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 6
+      },
+      "concept": "contains-duplicate-pattern"
+    },
+    {
+      "id": "c-count-scan",
+      "categoryId": "cat-patterns",
+      "order": 2,
+      "front": "Count-then-scan pattern",
+      "back": "Pass 1: build a count dict (item → count).\nPass 2: iterate the original input IN ORDER and find the first/best entry whose count matches your condition.\nUsed when you need the result in the ORDER of the original input (e.g. first non-repeating character).",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 16
+      },
+      "concept": "count-then-scan-pattern"
+    },
+    {
+      "id": "c-grouping",
+      "categoryId": "cat-patterns",
+      "order": 3,
+      "front": "Grouping pattern (e.g. group anagrams)",
+      "back": "```\ngroups = {}\nfor item in items:\n    key = derive_key(item)\n    groups.setdefault(key, []).append(item)\n```\nDict value can be a container (list). Alternative: collections.defaultdict(list).",
+      "concept": "grouping-pattern"
+    },
+    {
+      "id": "c-bigo-map",
+      "categoryId": "cat-bigo",
+      "order": 0,
+      "front": "Big O hierarchy (best → worst)",
+      "back": "O(1) → O(log n) → O(n) → O(n log n) → O(n²) → O(2ⁿ) → O(n!)\nExamples: hash lookup, binary search, single loop, merge sort, nested loops, recursive subsets, all permutations.",
+      "sourceRef": {
+        "type": "lesson-section",
+        "lessonId": "lesson-1.1",
+        "section": "intro"
+      },
+      "concept": "bigo-hierarchy"
+    },
+    {
+      "id": "c-bigo-rules",
+      "categoryId": "cat-bigo",
+      "order": 1,
+      "front": "Big O rules",
+      "back": "Drop constants. Drop smaller terms. Default = worst case.",
+      "concept": "bigo-rules"
+    },
+    {
+      "id": "c-recursion",
+      "categoryId": "cat-bigo",
+      "order": 2,
+      "front": "Recursion in Big O",
+      "back": "Each call is a unit of work AND a stack frame (space). Recursion depth contributes to space complexity.",
+      "concept": "recursion-bigo"
+    },
+    {
+      "id": "c-n-plus-m",
+      "categoryId": "cat-bigo",
+      "order": 3,
+      "front": "Two inputs of independent sizes — Big O?",
+      "back": "O(n + m). Don't collapse them into O(n) when n and m can vary independently (e.g. merging two arrays of length n and m).",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 11
+      },
+      "concept": "bigo-n-plus-m"
+    },
+    {
+      "id": "c-early-exit",
+      "categoryId": "cat-bigo",
+      "order": 4,
+      "front": "Does early exit change Big O?",
+      "back": "No. Big O measures the worst case; early exit only helps when the favorable case happens. It changes real-world constants, not the asymptotic class.",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 12
+      },
+      "concept": "early-exit-bigo"
+    },
+    {
+      "id": "c-h-brute",
+      "categoryId": "cat-habits",
+      "order": 0,
+      "front": "Habit: brute force first",
+      "back": "Always state the brute force solution + its complexity BEFORE optimizing. Mirrors interview structure and forces you to know your baseline.",
+      "concept": "habit-brute-force-first"
+    },
+    {
+      "id": "c-h-dryrun",
+      "categoryId": "cat-habits",
+      "order": 1,
+      "front": "Habit: dry-run on paper",
+      "back": "Walk through your code with a concrete example before running tests. Catches bugs the type checker can't, and it's the only thing you have in a whiteboard interview.",
+      "concept": "habit-dry-run"
+    },
+    {
+      "id": "c-h-bool",
+      "categoryId": "cat-habits",
+      "order": 2,
+      "front": "Habit: trace booleans with one example",
+      "back": "Before submitting, pick one concrete input and trace any if-statement / comparison through. Easy to invert == vs != without noticing.",
+      "concept": "habit-trace-booleans"
+    },
+    {
+      "id": "c-h-diagram",
+      "categoryId": "cat-habits",
+      "order": 3,
+      "front": "Habit: draw diagrams for pointer problems",
+      "back": "Linked lists, trees, graphs — sketch the data on paper / tablet with arrows BEFORE writing code. Pointer bugs are diagrammable; debugging them in your head is not.",
+      "concept": "habit-draw-diagrams"
+    },
+    {
+      "id": "c-g-iter-mod",
+      "categoryId": "cat-gotchas",
+      "order": 0,
+      "front": "Modify while iterating — what breaks?",
+      "back": "Python iterators hold an index into the underlying structure. Mutating shifts elements and skips/repeats items, or raises RuntimeError for dicts. Fixes: iterate a copy (for x in lst[:]), build a new list, or collect indices first.",
+      "concept": "gotcha-modify-while-iter"
+    },
+    {
+      "id": "c-g-slice-cop",
+      "categoryId": "cat-gotchas",
+      "order": 1,
+      "front": "lst[1:-1] — view or copy?",
+      "back": "COPY. Allocates a new list, O(b-a) time and space. Not a view. lst[:] is the idiomatic full-copy.",
+      "concept": "gotcha-slice-copy"
+    },
+    {
+      "id": "c-g-del-as-yg",
+      "categoryId": "cat-gotchas",
+      "order": 2,
+      "front": "Delete-as-you-go pattern — what's the trap?",
+      "back": "Walking a list and removing items mid-iteration breaks with odd occurrence counts — one copy survives and skews later matches. Safer: count first, then scan for the count condition you want.",
+      "concept": "gotcha-delete-as-you-go"
+    },
+    {
+      "id": "kcnx5qv2",
+      "categoryId": "cat-bigo",
+      "order": 5,
+      "front": "Big O for merge sort on n elements",
+      "back": "O(n log n)\n```\n[8 7 5 1 | 6 4 3 2]\n   ↓  split in half\n[8 7][5 1][6 4][3 2]\n   ↓  …until size 1\n[8][7][5][1][6][4][3][2]\n   ↑  merge, sorted\n[1 2 3 4 5 6 7 8]\n```\nsplits → log n levels\nmerge → n work per level\nlog n × n = O(n log n)",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-bigo-mc",
+        "questionIdx": 2
+      },
+      "concept": "bigo-hierarchy"
+    },
+    {
+      "id": "subq2n07",
+      "categoryId": "cat-bigo",
+      "order": 6,
+      "front": "Big O to generate all subsets of n items",
+      "back": "O(2ⁿ)\n```\neach item → IN or OUT?  (2 choices)\n  a      b      c\n  2   ×  2   ×  2   = 2³ = 8\n\n{} {a} {b} {c} {a,b} {a,c} {b,c} {a,b,c}\n```\nn yes/no switches → 2ⁿ\n(arrange in order instead → n!)",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-bigo-mc",
+        "questionIdx": 4
+      },
+      "concept": "bigo-hierarchy"
+    },
+    {
+      "id": "of54gzh4",
+      "categoryId": "cat-py-dict",
+      "front": "Count-then-scan pattern — what happens in pass 1 and pass 2?",
+      "back": "pass 1 builds counts; pass 2 iterates in order and returns the first/best matching count\n\nFirst non-repeating char in 'leetcode' → 'l'. Pass 1: count chars. Pass 2: scan original order, return first with count 1.\n```\n\"leetcode\"\npass 1 → l:1  e:3  t:1  c:1  o:1  d:1\npass 2 → scan in order, first count==1\n         l → answer: 'l'\n```",
+      "order": 7
+    },
+    {
+      "id": "m9bmscnk",
+      "categoryId": "cat-py-lists",
+      "front": "Return the elements of `lst` in reverse order by iterating indices with range(). Don't use slicing [::-1] or reversed().",
+      "back": "```\ndef reverse_by_index(lst):\n    result = []\n    for i in range(len(lst) - 1, -1, -1):\n        result.append(lst[i])\n    return result\n```\nrange(len-1, -1, -1): start incl, stop excl, step -1. The -1 stop = int below 0, NOT lst[-1].\n```\nlen = 3 → range(2, -1, -1) → 2, 1, 0\n          start incl ┘   └ stop excl (0 still hit)\n the -1 stop = 'int below 0', NOT lst[-1]\n```",
+      "order": 5
+    },
+    {
+      "id": "lx5jil2h",
+      "categoryId": "cat-py-dict",
+      "front": "Why is average-case dict/set lookup O(1)?",
+      "back": "A hash function maps the key directly to a slot index\n\nhash(key) → slot index in a contiguous array → jump straight there → O(1) avg.\n```\nkey ──hash()──▶ slot index ──▶ value\n        jump straight there (no scan)\n```",
+      "order": 8
+    },
+    {
+      "id": "wl-mobx-3parts",
+      "categoryId": "cat-mobx-angular",
+      "order": 0,
+      "front": "MobX: the 3 parts that make the UI update",
+      "back": "```\n@observable = tracked state\n@action     = mutates observables\nobserver    = subscribes the UI\n```\nIn this app the observer is mobx-angular's *mobxAutorun directive: action mutates → MobX notifies → *mobxAutorun re-renders that region.",
+      "concept": "mobx-reactivity"
+    },
+    {
+      "id": "wl-mobx-track",
+      "categoryId": "cat-mobx-angular",
+      "order": 1,
+      "front": "MobX: what does a *mobxAutorun region actually re-render on?",
+      "back": "Re-renders only on the @observables it READ inside that template:\n```\nread inside → tracked     → re-renders on change\nnot read    → not tracked → no update\n```",
+      "concept": "mobx-reactivity"
+    },
+    {
+      "id": "wl-mobx-computed",
+      "categoryId": "cat-mobx-angular",
+      "order": 2,
+      "front": "MobX: when does a @computed recalculate?",
+      "back": "Only when an @observable it read changes (result is cached between).\nIf it depends on something NON-observable (e.g. the current time), it will NOT recompute on its own.",
+      "concept": "mobx-computed"
+    },
+    {
+      "id": "wl-mobx-timetrick",
+      "categoryId": "cat-mobx-angular",
+      "order": 3,
+      "front": "MobX trick: make a @computed re-run as real time passes (e.g. subscription expiry)",
+      "back": "Time isn't observable, so read a timestamp observable you bump on a timer:\n```\nget isPro() { const _ = this.lastCheckTime; /* now reactive */ ...expiry check }\nsetInterval(() => this.lastCheckTime = Date.now(), 5000)\n```\nDelete the read → computed never re-runs → stale status.",
+      "concept": "mobx-time-computed"
+    },
+    {
+      "id": "wl-mobx-action",
+      "categoryId": "cat-mobx-angular",
+      "order": 4,
+      "front": "MobX: why mutate via @action instead of assigning directly?",
+      "back": "• batches mutations → one notify → one re-render\n• keeps state changes traceable\n• with enforceActions, MobX errors if you mutate an observable outside an action",
+      "concept": "mobx-actions"
+    },
+    {
+      "id": "wl-di-tokens",
+      "categoryId": "cat-mobx-angular",
+      "order": 5,
+      "front": "Angular DI: provide ONE instance under TWO tokens — why/how?",
+      "back": "```\nconst s = new UserStore();\nproviders: [{provide: UserStore, useValue: s},\n            {provide: UserStoreObject, useValue: s}]\n```\nBoth tokens → the SAME singleton. Shared lib injects the abstract token (no concrete import); app injects the class. Tokens are just keys.",
+      "concept": "angular-di-tokens"
+    },
+    {
+      "id": "wl-di-providers",
+      "categoryId": "cat-mobx-angular",
+      "order": 6,
+      "front": "Angular DI: useValue vs useClass vs useFactory",
+      "back": "```\nuseValue   → provide a ready-made object/instance\nuseClass   → let Angular construct the class\nuseFactory → run a function (with deps) to build it\n```\nAll three bind a token → how to obtain its value.",
+      "concept": "angular-di-providers"
+    },
+    {
+      "id": "wl-app-init",
+      "categoryId": "cat-mobx-angular",
+      "order": 7,
+      "front": "Angular: what is APP_INITIALIZER (and multi: true)?",
+      "back": "Runs an async fn BEFORE the app starts; bootstrap awaits the returned promise.\nUse for one-time startup (load user, language, theme).\nmulti: true = register many initializers under the one token; all run.",
+      "concept": "angular-app-initializer"
+    },
+    {
+      "id": "wl-lazy-routes",
+      "categoryId": "cat-mobx-angular",
+      "order": 8,
+      "front": "Angular routing: loadComponent vs loadChildren, and the '**' route",
+      "back": "```\nloadComponent → lazy-load ONE standalone component\nloadChildren  → lazy-load a child ROUTES file\n```\nlazy = code-split → smaller initial bundle.\n'**' = wildcard; must be LAST (matches anything unmatched → redirect home).",
+      "concept": "angular-lazy-routing"
+    },
+    {
+      "id": "wl-mig-idempotent",
+      "categoryId": "cat-mobx-angular",
+      "order": 9,
+      "front": "Migration: make runMigrations() safe to call concurrently",
+      "back": "Memoize the in-flight promise:\n```\nif (this.p) return this.p;\nthis.p = this.doMigrations();\n```\nConcurrent callers await the SAME run → migration executes once → no double-import.",
+      "concept": "migration-idempotency"
+    },
+    {
+      "id": "wl-mig-version",
+      "categoryId": "cat-mobx-angular",
+      "order": 10,
+      "front": "Migration: why gate by databaseVersion (>=1, >=2) instead of running every launch?",
+      "back": "databaseVersion = high-water mark → each migration runs EXACTLY once (they're one-time, irreversible).\nFresh: 0 → v1 (no legacy) → v2 backfill → 2\nUpgrade: 0 → v1 imports legacy → v2 backfill → 2\nRunning every launch would duplicate/corrupt data.",
+      "concept": "migration-versioning"
+    },
+    {
+      "id": "wl-streak",
+      "categoryId": "cat-mobx-angular",
+      "order": 11,
+      "front": "Algorithm: current streak of consecutive active days, counting back from today",
+      "back": "1) Set of 'YYYY-MM-DD' per active day (dedup, O(1) lookup)\n2) cursor = today; if today not in set, step back 1 day (streak still alive from yesterday); else return 0\n3) while cursor in set: streak++, cursor -= 1 day\nStops at the first gap.",
+      "concept": "streak-algorithm"
+    }
+  ],
+  "reviewQueue": []
+}

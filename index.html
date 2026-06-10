@@ -1,0 +1,3935 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #fafafa;
+    --bg-softer: #f5f5f5;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --text-dim: #9a9a9a;
+    --border: #ececec;
+    --border-strong: #d4d4d4;
+    --accent: #1a1a1a;
+    --accent-soft: #f3f3f3;
+    --danger: #b91c1c;
+    --good: #15803d;
+    --radius: 8px;
+    --radius-sm: 4px;
+    --radius-lg: 14px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  button:hover { background: var(--bg-soft); border-color: var(--border-strong); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button:disabled:hover { background: transparent; border-color: var(--border); }
+  button.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  button.primary:hover { background: #000; }
+  button.ghost { border-color: transparent; color: var(--text-muted); }
+  button.ghost:hover { background: var(--bg-soft); color: var(--text); }
+  button.danger { color: var(--danger); }
+  button.danger:hover { background: #fef2f2; border-color: var(--danger); }
+  button.icon { padding: 4px 8px; font-size: 14px; }
+  button.toggle.active { background: var(--accent-soft); border-color: var(--border-strong); color: var(--text); }
+
+  input, textarea, select {
+    font: inherit;
+    color: inherit;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    width: 100%;
+    transition: border-color 0.12s;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--text); }
+  textarea { resize: vertical; min-height: 80px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+
+  body { display: flex; flex-direction: column; }
+  .topbar {
+    display: flex;
+    align-items: center;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    gap: 32px;
+    background: var(--bg);
+  }
+  .title { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { border: none; padding: 6px 12px; color: var(--text-muted); border-radius: var(--radius-sm); }
+  .tab.active { color: var(--text); background: var(--accent-soft); }
+  /* Curriculum progress — connected dots (one per chapter, larger at each phase start) */
+  .syllabus-progress { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .sp-dots { position: relative; flex: 1; display: flex; align-items: center; justify-content: space-between; min-width: 160px; height: 16px; }
+  .sp-dots::before, .sp-dots::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); height: 2px; border-radius: 2px; }
+  .sp-dots::before { left: 5px; right: 5px; background: var(--border); }                         /* full track */
+  .sp-dots::after  { left: 5px; width: var(--sp-fill, 0px); background: var(--good); }            /* filled track */
+  .sp-dot { position: relative; z-index: 1; width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--border); box-sizing: border-box; }
+  .sp-dot.done { background: var(--good); border-color: var(--good); }
+  .sp-dot.major { width: 12px; height: 12px; border-width: 2px; }
+  .sp-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Plan / Job Search Roadmap page */
+  .plan-intro { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; max-width: 720px; }
+  .plan-tier { margin-bottom: 24px; max-width: 720px; }
+  .plan-tier-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 4px; }
+  .plan-tier-head h2 { font-size: 16px; font-weight: 600; }
+  .plan-ready { font-size: 12px; font-weight: 600; color: var(--good); white-space: nowrap; }
+  .plan-brief { font-size: 13px; color: var(--text-muted); margin: 0 0 10px; }
+  .plan-jobs { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .plan-jobs li { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: 14px; }
+  .plan-jobs .pj-title { color: var(--text); }
+  .plan-jobs .pj-title em { color: var(--text-muted); font-style: normal; font-size: 12px; }
+  .plan-jobs .pj-pay { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .plan-notes { margin: 4px 0 0; padding-left: 18px; font-size: 14px; color: var(--text); }
+  .plan-notes li { margin-bottom: 4px; }
+
+  main { flex: 1; display: flex; overflow: hidden; }
+  .view { flex: 1; display: none; overflow: hidden; }
+  .view.active { display: flex; }
+
+  .pane {
+    border-right: 1px solid var(--border);
+    background: var(--bg-soft);
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pane-header h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; }
+  .pane-list { flex: 1; overflow-y: auto; padding: 8px; list-style: none; }
+  .pane-list li {
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    user-select: none;
+  }
+  .pane-list li:hover { background: var(--bg); }
+  .pane-list li.active { background: var(--bg); border: 1px solid var(--border); }
+  .pane-list li[draggable="true"] { cursor: grab; }
+  .pane-list li.dragging { opacity: 0.4; }
+  .pane-list .name { flex: 1; }
+  .pane-list .count { font-size: 12px; color: var(--text-dim); }
+  .pane-list .pin-btn {
+    border: none;
+    background: transparent;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    opacity: 0;
+    transition: opacity 0.12s, color 0.12s;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .pane-list li:hover .pin-btn,
+  .pane-list li.pinned .pin-btn { opacity: 1; }
+  .pane-list li.pinned .pin-btn { color: var(--text); }
+  .pane-list .pin-btn:hover { color: var(--text); }
+
+  .main-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .main-header {
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .main-header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .main-controls { display: flex; gap: 8px; align-items: center; }
+  .main-body { flex: 1; overflow-y: auto; padding: 24px 32px; }
+
+  .placeholder { color: var(--text-dim); text-align: center; padding: 64px 16px; font-size: 14px; }
+  .empty-state { color: var(--text-dim); text-align: center; padding: 32px 16px; font-size: 14px; }
+
+  /* Collapsible overview / quick add */
+  details.collapsible {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-soft);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  details.collapsible[open] { background: var(--bg); }
+  details.collapsible > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 16px;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  details.collapsible > summary::-webkit-details-marker { display: none; }
+  details.collapsible > summary::before {
+    content: "›";
+    display: inline-block;
+    transition: transform 0.15s;
+    color: var(--text-dim);
+    font-size: 16px;
+  }
+  details.collapsible[open] > summary::before { transform: rotate(90deg); }
+  details.collapsible > .collapsible-content { padding: 0 16px 16px; }
+  .quick-add-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .quick-add-row:last-child { margin-bottom: 0; }
+  .quick-add-row label { margin: 0; flex-shrink: 0; min-width: 80px; }
+
+  /* Flashcards */
+  .flashcards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 16px;
+  }
+  .flashcards-single {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 0;
+  }
+  .flashcards-single .flashcard-wrap { max-width: 960px; width: 100%; }
+  .single-nav {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  .single-nav .index-label { min-width: 80px; text-align: center; }
+
+  .flashcard-wrap { position: relative; }
+  .flashcard {
+    perspective: 1400px;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    cursor: pointer;
+    user-select: none;
+  }
+  .flashcard.editing { cursor: default; }
+  .flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+  .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+  .flashcard-face {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg);
+    box-shadow: var(--shadow-card);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: pre-wrap;
+    overflow: hidden;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .flashcard-front .face-content { font-weight: 500; font-size: 16px; }
+  .flashcard-back .face-content { font-size: 14px; color: var(--text-muted); }
+  .face-content { width: 100%; word-break: break-word; }
+  .face-content code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--bg-soft);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+  /* Multi-line code / diagram box: left-aligned, real indentation, scrolls instead of jumbling */
+  .flashcard-face:has(.card-code) { align-items: stretch; justify-content: flex-start; text-align: left; }
+  .face-content.has-code { width: 100%; display: flex; flex-direction: column; gap: 8px; align-items: stretch; text-align: left; }
+  .face-content .face-text { text-align: left; white-space: pre-wrap; line-height: 1.4; }
+  .face-content .card-code {
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    white-space: pre;
+    overflow-x: auto;
+    overflow-y: hidden;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    color: var(--text);
+    -webkit-overflow-scrolling: touch;
+  }
+  .flashcard-back { transform: rotateY(180deg); background: var(--bg-softer); }
+  .flashcard:not(.editing):hover .flashcard-face { box-shadow: var(--shadow-card-hover); border-color: var(--border-strong); }
+
+  /* tiny corner label */
+  .face-corner {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+  .queue-indicator {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 14px;
+    color: var(--text);
+    pointer-events: none;
+    line-height: 1;
+  }
+
+  /* Edit mode */
+  .flashcard.editing .flashcard-face { background: var(--bg); }
+  .flashcard.editing .flashcard-back { background: var(--bg-softer); }
+  .flashcard.editing .face-edit {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    resize: none;
+    text-align: center;
+    font: inherit;
+    color: inherit;
+    padding: 8px;
+    outline: none;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .flashcard.editing .flashcard-front .face-edit { font-weight: 500; font-size: 16px; }
+  .flashcard.editing .flashcard-back .face-edit { font-size: 14px; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .flashcard-controls {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .flashcard-controls button { font-size: 12px; padding: 4px 10px; }
+
+  /* Ask Claude integration */
+  .card-foot {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .flashcard-wrap:hover .card-foot,
+  .flashcards-single .card-foot,
+  .card-foot.always-show { opacity: 1; pointer-events: auto; }
+  .ask-claude-btn {
+    font-size: 12px;
+    padding: 4px 10px;
+    color: var(--text-dim);
+    border-color: transparent;
+  }
+  .ask-claude-btn:hover {
+    color: var(--text);
+    background: var(--bg-soft);
+    border-color: var(--border);
+  }
+  .context-preview {
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    white-space: pre-wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+
+  /* Quizzes (unchanged) */
+  .quiz-question {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .q-meta { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .q-prompt { font-size: 16px; margin-bottom: 16px; white-space: pre-wrap; }
+  .q-options { display: flex; flex-direction: column; gap: 8px; }
+  .q-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.12s;
+  }
+  .q-option:hover { border-color: var(--border-strong); }
+  .q-option.selected { border-color: var(--text); background: var(--accent-soft); }
+  .q-option input { width: auto; }
+  .q-result { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-sm); font-size: 14px; }
+  .q-result.correct { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--good); }
+  .q-result.incorrect { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
+  .q-result.recorded { background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-muted); }
+  .q-override { margin-top: 8px; }
+  .q-override-btn { font-size: 12px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius-sm); cursor: pointer; }
+  .q-override-btn:hover { border-color: var(--border-strong); }
+  .q-override-btn.active { background: #f0fdf4; border-color: #bbf7d0; color: var(--good); }
+  .q-actions { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .q-answer {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    white-space: pre-wrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .q-answer-label {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .q-answer-label.spaced { margin-top: 14px; }
+  .q-why {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+  .q-visual {
+    margin: 12px 0 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.4;
+  }
+  .q-rate {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .q-rate-buttons { display: flex; gap: 4px; }
+  .q-rate button {
+    min-width: 36px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+  .q-rate button.selected {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+  .q-rate-scale {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .q-note { margin-top: 10px; }
+  .q-note label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .q-note textarea {
+    min-height: 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+  }
+
+  /* Lessons */
+  .lesson-meta-inline {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .lesson-section { margin-bottom: 28px; }
+  .lesson-section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .section-header .lesson-section-label { margin-bottom: 0; }
+  .flashcard-from-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+    color: var(--text-dim);
+    border-color: transparent;
+    opacity: 0;
+    transition: opacity 0.12s, color 0.12s;
+  }
+  .lesson-section:hover .flashcard-from-btn,
+  .exercise:hover .flashcard-from-btn,
+  .flashcard-from-btn:focus {
+    opacity: 1;
+  }
+  .flashcard-from-btn:hover {
+    color: var(--text);
+    background: var(--bg-soft);
+    border-color: var(--border);
+  }
+  .exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .exercise-header h3 { margin: 0; }
+  .lesson-summary {
+    font-size: 15px;
+    margin-bottom: 8px;
+  }
+  .session-notes {
+    background: var(--bg-soft);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--border-strong);
+    font-size: 14px;
+    color: var(--text-muted);
+    font-style: italic;
+    white-space: pre-wrap;
+  }
+  .lesson-intro {
+    font-size: 14px;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+  }
+  .body-block { margin-bottom: 12px; }
+  .body-block.prose {
+    font-size: 14px;
+    color: var(--text);
+    white-space: pre-wrap;
+    line-height: 1.55;
+  }
+  .body-block.code, .body-block.diagram {
+    background: var(--bg-soft);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  .body-block.diagram { color: var(--text-muted); }
+  .body-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .body-block-header .heading { font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 600; }
+  /* Collapsible syntax / worked-example sections */
+  .lesson-collapsible {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    margin: 12px 0;
+    background: var(--accent-soft);
+  }
+  .lesson-collapsible > summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    list-style: none;
+  }
+  .lesson-collapsible > summary::-webkit-details-marker { display: none; }
+  .lesson-collapsible > summary::before { content: "\25B8  "; color: var(--text-dim); }
+  .lesson-collapsible[open] > summary::before { content: "\25BE  "; }
+  .lesson-collapsible[open] > summary { margin-bottom: 10px; }
+  .lesson-collapsible .body-block:last-child { margin-bottom: 0; }
+  /* Pyodide UI */
+  .code-runner { margin-top: 8px; }
+  .code-runner-controls { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .code-runner-controls button { font-size: 12px; padding: 4px 10px; }
+  .code-runner-output {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--bg-soft);
+    border-radius: var(--radius-sm);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    color: var(--text-muted);
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .code-runner-output.error { color: var(--danger); background: #fef2f2; }
+  .code-runner-output.success { color: var(--good); background: #f0fdf4; }
+  .code-runner-status { font-size: 11px; color: var(--text-dim); margin-left: 8px; }
+  .exercise {
+    margin-bottom: 16px;
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+  .exercise h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .exercise-block { margin-bottom: 10px; }
+  .exercise-block:last-child { margin-bottom: 0; }
+  .exercise-block .block-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .block-body.prompt {
+    background: var(--bg-soft);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+  .block-body.answer {
+    background: var(--bg-soft);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  textarea.block-body.answer {
+    width: 100%;
+    border: 1px solid transparent;
+    resize: vertical;
+    min-height: auto;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  textarea.block-body.answer:hover { border-color: var(--border); }
+  textarea.block-body.answer:focus {
+    outline: none;
+    border-color: var(--text);
+    background: var(--bg);
+  }
+  .block-body.critique {
+    padding: 10px 12px;
+    border-left: 3px solid var(--text);
+    background: var(--bg-soft);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+  .review-items-added {
+    background: var(--bg-soft);
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+  }
+  .review-items-added ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .review-items-added li {
+    font-size: 13px;
+    padding: 3px 0;
+    color: var(--text-muted);
+  }
+  .review-items-added li::before {
+    content: "•  ";
+    color: var(--text-dim);
+  }
+
+  /* Connect button states */
+  #connectBtn.connected { color: var(--good); border-color: var(--good); }
+  #connectBtn.connected::before { content: "● "; }
+  #connectBtn.disconnected::before { content: "○ "; color: var(--text-dim); }
+
+  /* Attempt selector */
+  #attemptSelect {
+    width: auto;
+    min-width: 200px;
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  /* Q&A section */
+  .qa-section {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 2px solid var(--border);
+  }
+  .qa-section .qa-empty {
+    color: var(--text-dim);
+    font-size: 13px;
+    font-style: italic;
+    padding: 12px 0;
+  }
+  .qa-entry {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: var(--bg-soft);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--text);
+  }
+  .qa-entry .qa-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .qa-entry .qa-q {
+    font-weight: 500;
+    margin-bottom: 8px;
+    white-space: pre-wrap;
+  }
+  .qa-entry .qa-a {
+    color: var(--text-muted);
+    white-space: pre-wrap;
+  }
+
+  /* Disconnected state placeholder */
+  .connect-prompt {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-muted);
+  }
+  .connect-prompt h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .connect-prompt p { margin-bottom: 16px; font-size: 14px; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px;
+    z-index: 100;
+  }
+  .modal {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+  .modal h2 { font-size: 18px; margin-bottom: 16px; font-weight: 600; }
+  .field { margin-bottom: 12px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg);
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  .drop-target { background: var(--accent-soft); }
+
+  /* Flashcards-only mode (no FSA — iOS browsers) */
+  .fc-only-banner {
+    background: var(--bg-soft);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 32px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="title">Study</div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="cards">Flashcards</button>
+    <button class="tab" data-tab="quiz">Quizzes</button>
+    <button class="tab" data-tab="lessons">Lessons</button>
+    <button class="tab" data-tab="plan">Plan</button>
+  </nav>
+  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress (from SYLLABUS.md)">
+    <div class="sp-dots" id="spDots" hidden></div>
+    <span class="sp-label" id="spLabel" hidden></span>
+  </div>
+  <div class="topbar-actions">
+    <button id="connectBtn" class="ghost" title="Connect to your study-tool folder so lessons + quizzes sync to JSON files on disk">Connect</button>
+    <button id="exportBtn" class="ghost" title="Export flashcards as JSON">Export</button>
+    <button id="importBtn" class="ghost" title="Import flashcards JSON">Import</button>
+    <input id="importFile" type="file" accept=".json" hidden>
+  </div>
+</header>
+
+<main>
+  <section id="cardsView" class="view active">
+    <aside class="pane">
+      <div class="pane-header">
+        <h2>Categories</h2>
+        <button id="addCatBtn" class="icon">+</button>
+      </div>
+      <ul id="categoriesList" class="pane-list"></ul>
+    </aside>
+    <div class="main-pane">
+      <div class="main-header">
+        <h1 id="currentCatTitle">—</h1>
+        <div class="main-controls">
+          <button id="viewModeBtn" class="toggle" hidden>Single</button>
+          <button id="editModeBtn" class="toggle" hidden>Edit</button>
+          <button id="renameCatBtn" class="ghost" hidden>Rename</button>
+          <button id="deleteCatBtn" class="danger" hidden>Delete</button>
+          <button id="addCardBtn" class="primary" hidden>+ Card</button>
+        </div>
+      </div>
+      <div class="main-body" id="cardsBody">
+        <div class="placeholder">Pick or create a category to add flashcards.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="lessonsView" class="view">
+    <aside class="pane">
+      <div class="pane-header">
+        <h2>Lessons</h2>
+      </div>
+      <ul id="lessonsList" class="pane-list"></ul>
+    </aside>
+    <div class="main-pane">
+      <div class="main-header">
+        <h1 id="currentLessonTitle">—</h1>
+        <div class="main-controls">
+          <span id="currentLessonMeta" class="lesson-meta-inline"></span>
+          <button id="lessonReloadBtn" class="ghost" hidden title="Re-read this lesson's JSON file from disk (picks up any Q&A I appended)">Reload from local</button>
+          <button id="lessonUpdateBtn" class="primary" hidden title="Save current edits back to the JSON file on disk">Update local copy</button>
+        </div>
+      </div>
+      <div class="main-body" id="lessonBody">
+        <div class="placeholder">Pick a lesson to review what you did.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quizView" class="view">
+    <aside class="pane">
+      <div class="pane-header">
+        <h2>Quizzes</h2>
+        <button id="addQuizBtn" class="icon">+</button>
+      </div>
+      <ul id="quizzesList" class="pane-list"></ul>
+    </aside>
+    <div class="main-pane">
+      <div class="main-header">
+        <h1 id="currentQuizTitle">—</h1>
+        <div class="main-controls">
+          <select id="attemptSelect" hidden title="Select an attempt"></select>
+          <button id="newAttemptBtn" hidden title="Start a fresh attempt (old attempts are preserved as separate files)">+ New attempt</button>
+          <button id="quizReloadBtn" class="ghost" hidden title="Re-read this attempt's file from disk">Reload from local</button>
+          <button id="quizUpdateBtn" class="primary" hidden title="Save current answers back to the attempt's JSON file">Update local copy</button>
+          <button id="downloadReviewBtn" class="ghost" hidden title="Also download a .py review file (legacy share format)">Download .py</button>
+          <button id="editQuizBtn" class="ghost" hidden>Edit</button>
+          <button id="deleteQuizBtn" class="danger" hidden>Delete</button>
+        </div>
+      </div>
+      <div class="main-body" id="quizBody">
+        <div class="placeholder">Pick or create a quiz to begin.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="planView" class="view">
+    <aside class="pane">
+      <div class="pane-header">
+        <h2>Plan</h2>
+      </div>
+      <ul id="planList" class="pane-list"></ul>
+    </aside>
+    <div class="main-pane">
+      <div class="main-header">
+        <h1 id="planTitle">—</h1>
+      </div>
+      <div class="main-body" id="planBody">
+        <div class="placeholder">Select a plan document.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+"use strict";
+
+/* ===== state + persistence ===== */
+const STORAGE_KEY = "study-tool-state-v1";
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { console.warn("Failed to load state", e); }
+  return { version: 1, categories: [], cards: [], reviewQueue: [], quizzes: [], sessions: [], lessons: [] };
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { console.warn("Failed to save state", e); }
+}
+const state = loadState();
+
+// UI prefs (persisted separately so they stay machine-local on import)
+const PREFS_KEY = "study-tool-prefs-v1";
+let prefs = {};
+try { prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || "{}"); } catch (e) { prefs = {}; }
+function savePrefs() {
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {}
+}
+
+let activeCategoryId = null;
+let activeQuizId = null;
+let activeLessonId = null;
+let activeSession = null;
+
+// UI state (not persisted)
+let viewMode = "grid";       // "grid" | "single"
+let editMode = false;
+let singleIdx = 0;
+let cardFlippedState = {};   // cardId → bool (which face is showing)
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+/* =====================================================================
+   File System Access API — sync lessons + quizzes to JSON files on disk
+   ===================================================================== */
+
+const fs = {
+  dirHandle: null,
+  connected: false,
+  lessons: new Map(),       // id -> lesson data
+  quizzes: new Map(),       // id -> quiz definition
+  quizDirs: new Map(),      // quizId -> directory handle
+  attempts: new Map(),      // quizId -> [attempt, ...]
+};
+
+const fsm = {
+  IDB_NAME: "study-tool-fs",
+  IDB_STORE: "handles",
+  IDB_KEY: "rootDir",
+
+  openIDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(this.IDB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(this.IDB_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async saveHandle(handle) {
+    const db = await this.openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.IDB_STORE, "readwrite");
+      tx.objectStore(this.IDB_STORE).put(handle, this.IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async loadHandle() {
+    const db = await this.openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.IDB_STORE, "readonly");
+      const req = tx.objectStore(this.IDB_STORE).get(this.IDB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async clearHandle() {
+    const db = await this.openIDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.IDB_STORE, "readwrite");
+      tx.objectStore(this.IDB_STORE).delete(this.IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  },
+
+  async verifyPermission(handle, requestIfNeeded = true) {
+    const opts = { mode: "readwrite" };
+    if ((await handle.queryPermission(opts)) === "granted") return true;
+    if (requestIfNeeded && (await handle.requestPermission(opts)) === "granted") return true;
+    return false;
+  },
+
+  async connect() {
+    if (!window.showDirectoryPicker) {
+      alert("Your browser doesn't support the File System Access API. Use Chrome, Edge, or another Chromium-based browser.");
+      return false;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ mode: "readwrite", startIn: "documents" });
+      const ok = await this.verifyPermission(handle, true);
+      if (!ok) { toast("Permission denied"); return false; }
+      await this.saveHandle(handle);
+      fs.dirHandle = handle;
+      fs.connected = true;
+      await this.loadAll();
+      updateConnectionUI();
+      toast(`Connected to "${handle.name}"`);
+      return true;
+    } catch (e) {
+      if (e.name !== "AbortError") console.error(e);
+      return false;
+    }
+  },
+
+  async tryReconnect() {
+    try {
+      const handle = await this.loadHandle();
+      if (!handle) return false;
+      // Without requesting, just check — silent reconnect is best-effort.
+      const granted = await this.verifyPermission(handle, false);
+      if (!granted) {
+        // We have a remembered handle but need user gesture for permission.
+        // Mark as "remembered but locked" — user must click Connect.
+        fs.dirHandle = handle;
+        fs.connected = false;
+        return false;
+      }
+      fs.dirHandle = handle;
+      fs.connected = true;
+      await this.loadAll();
+      return true;
+    } catch (e) {
+      console.warn("Reconnect failed:", e);
+      return false;
+    }
+  },
+
+  async loadAll() {
+    fs.lessons.clear();
+    fs.quizzes.clear();
+    fs.quizDirs.clear();
+    fs.attempts.clear();
+
+    // Lessons
+    try {
+      const lessonsDir = await fs.dirHandle.getDirectoryHandle("lessons", { create: true });
+      for await (const [name, handle] of lessonsDir.entries()) {
+        if (handle.kind === "file" && name.endsWith(".json")) {
+          try {
+            const file = await handle.getFile();
+            const data = JSON.parse(await file.text());
+            data._filename = name;
+            fs.lessons.set(data.id, data);
+          } catch (e) { console.warn("Bad lesson file:", name, e); }
+        }
+      }
+    } catch (e) { console.warn("Lessons dir error:", e); }
+
+    // Quizzes (each quiz is its own subdirectory)
+    try {
+      const quizzesDir = await fs.dirHandle.getDirectoryHandle("quizzes", { create: true });
+      for await (const [name, handle] of quizzesDir.entries()) {
+        if (handle.kind !== "directory") continue;
+        try {
+          const defHandle = await handle.getFileHandle("definition.json");
+          const file = await defHandle.getFile();
+          const def = JSON.parse(await file.text());
+          def._dirName = name;
+          fs.quizzes.set(def.id, def);
+          fs.quizDirs.set(def.id, handle);
+
+          const attempts = [];
+          for await (const [fname, fhandle] of handle.entries()) {
+            if (fhandle.kind === "file" && fname.startsWith("attempt_") && fname.endsWith(".json")) {
+              try {
+                const af = await fhandle.getFile();
+                const at = JSON.parse(await af.text());
+                at._filename = fname;
+                attempts.push(at);
+              } catch (e) { console.warn("Bad attempt file:", fname, e); }
+            }
+          }
+          attempts.sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+          fs.attempts.set(def.id, attempts);
+        } catch (e) { console.warn("Bad quiz dir:", name, e); }
+      }
+    } catch (e) { console.warn("Quizzes dir error:", e); }
+
+    // Syllabus progress (Phase 1 checkboxes) — optional; bar hides if absent.
+    fs.syllabusProgress = null;
+    try {
+      const sh = await fs.dirHandle.getFileHandle("SYLLABUS.md");
+      const text = await (await sh.getFile()).text();
+      fs.syllabusProgress = parseSyllabusChapters(text);
+    } catch (e) { /* no SYLLABUS.md — leave null */ }
+    renderSyllabusProgress();
+  },
+
+  lessonFilename(lesson) {
+    if (lesson._filename) return lesson._filename;
+    const m = (lesson.title || "").match(/^([\d.]+)/);
+    const num = m ? m[1] : (lesson.id || "untitled").replace(/[^\w.]/g, "_");
+    return `Lesson_${num}.json`;
+  },
+
+  async writeLesson(lesson) {
+    if (!fs.connected) throw new Error("Not connected");
+    const lessonsDir = await fs.dirHandle.getDirectoryHandle("lessons", { create: true });
+    const filename = this.lessonFilename(lesson);
+    const fh = await lessonsDir.getFileHandle(filename, { create: true });
+    const w = await fh.createWritable();
+    const toWrite = { ...lesson };
+    delete toWrite._filename;
+    await w.write(JSON.stringify(toWrite, null, 2) + "\n");
+    await w.close();
+    lesson._filename = filename;
+  },
+
+  async reloadLesson(lessonId) {
+    if (!fs.connected) return null;
+    const lessonsDir = await fs.dirHandle.getDirectoryHandle("lessons");
+    const lesson = fs.lessons.get(lessonId);
+    const filename = lesson ? this.lessonFilename(lesson) : null;
+    if (!filename) return null;
+    try {
+      const fh = await lessonsDir.getFileHandle(filename);
+      const file = await fh.getFile();
+      const data = JSON.parse(await file.text());
+      data._filename = filename;
+      fs.lessons.set(data.id, data);
+      return data;
+    } catch (e) {
+      console.warn("Reload lesson failed:", e);
+      return null;
+    }
+  },
+
+  async writeQuiz(quiz) {
+    if (!fs.connected) throw new Error("Not connected");
+    const quizzesDir = await fs.dirHandle.getDirectoryHandle("quizzes", { create: true });
+    const dirName = quiz._dirName || quiz.id.replace(/^quiz-/, "").replace(/[^\w-]/g, "-");
+    const quizDir = await quizzesDir.getDirectoryHandle(dirName, { create: true });
+    const fh = await quizDir.getFileHandle("definition.json", { create: true });
+    const w = await fh.createWritable();
+    const toWrite = { ...quiz };
+    delete toWrite._dirName;
+    await w.write(JSON.stringify(toWrite, null, 2) + "\n");
+    await w.close();
+    quiz._dirName = dirName;
+    fs.quizDirs.set(quiz.id, quizDir);
+  },
+
+  async writeAttempt(quizId, attempt) {
+    if (!fs.connected) throw new Error("Not connected");
+    const quizDir = fs.quizDirs.get(quizId);
+    if (!quizDir) throw new Error("Quiz directory not loaded");
+    const filename = attempt._filename || `attempt_${(attempt.timestamp || "").slice(0, 10)}_${attempt.id.slice(0, 6)}.json`;
+    const fh = await quizDir.getFileHandle(filename, { create: true });
+    const w = await fh.createWritable();
+    const toWrite = { ...attempt };
+    delete toWrite._filename;
+    await w.write(JSON.stringify(toWrite, null, 2) + "\n");
+    await w.close();
+    attempt._filename = filename;
+  },
+
+  async reloadAttempt(quizId, attemptId) {
+    if (!fs.connected) return null;
+    const quizDir = fs.quizDirs.get(quizId);
+    if (!quizDir) return null;
+    const attempts = fs.attempts.get(quizId) || [];
+    const att = attempts.find(a => a.id === attemptId);
+    if (!att || !att._filename) return null;
+    try {
+      const fh = await quizDir.getFileHandle(att._filename);
+      const file = await fh.getFile();
+      const data = JSON.parse(await file.text());
+      data._filename = att._filename;
+      const idx = attempts.findIndex(a => a.id === attemptId);
+      if (idx >= 0) attempts[idx] = data;
+      return data;
+    } catch (e) {
+      console.warn("Reload attempt failed:", e);
+      return null;
+    }
+  },
+
+  async deleteAttempt(quizId, attemptId) {
+    if (!fs.connected) return false;
+    const quizDir = fs.quizDirs.get(quizId);
+    if (!quizDir) return false;
+    const attempts = fs.attempts.get(quizId) || [];
+    const att = attempts.find(a => a.id === attemptId);
+    if (!att || !att._filename) return false;
+    try {
+      await quizDir.removeEntry(att._filename);
+      fs.attempts.set(quizId, attempts.filter(a => a.id !== attemptId));
+      return true;
+    } catch (e) { console.warn("Delete attempt failed:", e); return false; }
+  },
+
+  async deleteQuiz(quizId) {
+    if (!fs.connected) return false;
+    const quizzesDir = await fs.dirHandle.getDirectoryHandle("quizzes");
+    const def = fs.quizzes.get(quizId);
+    if (!def) return false;
+    const dirName = def._dirName;
+    if (!dirName) return false;
+    try {
+      await quizzesDir.removeEntry(dirName, { recursive: true });
+      fs.quizzes.delete(quizId);
+      fs.quizDirs.delete(quizId);
+      fs.attempts.delete(quizId);
+      return true;
+    } catch (e) { console.warn("Delete quiz failed:", e); return false; }
+  },
+};
+
+/* =====================================================================
+   Pyodide — lazy-loaded Python execution in the browser
+   ===================================================================== */
+
+let pyodide = null;
+let pyodideLoadPromise = null;
+
+function pyodideAvailable() { return true; }  // we always offer the UI; loading happens on click
+
+async function loadPyodideIfNeeded(statusEl) {
+  if (pyodide) return pyodide;
+  if (pyodideLoadPromise) return pyodideLoadPromise;
+  if (statusEl) statusEl.textContent = "Loading Python… (~10 MB, first time only)";
+  pyodideLoadPromise = (async () => {
+    if (!window.loadPyodide) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js";
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+    pyodide = await window.loadPyodide({
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.27.0/full/"
+    });
+    return pyodide;
+  })();
+  return pyodideLoadPromise;
+}
+
+async function runPython(code) {
+  const py = await loadPyodideIfNeeded();
+  py.runPython(`
+import sys, io
+_stdout_buf = io.StringIO()
+_stderr_buf = io.StringIO()
+sys.stdout = _stdout_buf
+sys.stderr = _stderr_buf
+  `);
+  let error = null, value;
+  try {
+    value = py.runPython(code);
+  } catch (e) {
+    error = (e && e.message) || String(e);
+  }
+  py.runPython(`
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
+  `);
+  const stdout = py.runPython("_stdout_buf.getvalue()");
+  const stderr = py.runPython("_stderr_buf.getvalue()");
+  return { stdout, stderr, value, error };
+}
+
+// Reset interpreter state between runs to avoid stale definitions
+async function resetPythonNamespace() {
+  const py = await loadPyodideIfNeeded();
+  py.runPython(`
+import sys
+_keep = {"__name__", "__doc__", "__builtins__", "__loader__", "__spec__",
+         "__package__", "sys", "io"}
+for _k in list(globals().keys()):
+    if _k not in _keep and not _k.startswith("_"):
+        del globals()[_k]
+  `);
+}
+
+/**
+ * Attach a code runner UI (buttons + output panel) below a parent element.
+ *   parentEl: where to append
+ *   getCode: () => string — the user's code to run
+ *   getTests: () => string[] | null — array of test assertion snippets (optional)
+ *   setupCode: string | null — code to run BEFORE user code (e.g., _build helpers)
+ *   runnerId: unique identifier
+ */
+// Make Tab insert spaces (and Shift+Tab dedent) inside a code textarea, instead of
+// moving focus. Handles multi-line selections; preserves native undo for the common case.
+function enableTabIndent(ta) {
+  const INDENT = "    "; // 4 spaces (Python)
+  ta.addEventListener("keydown", e => {
+    if (e.key !== "Tab") return;
+    e.preventDefault();
+    const start = ta.selectionStart, end = ta.selectionEnd, val = ta.value;
+    if (start === end && !e.shiftKey) {
+      // Simple cursor insert — use execCommand so Ctrl/Cmd+Z still works.
+      if (document.execCommand && document.execCommand("insertText", false, INDENT)) return;
+      ta.value = val.slice(0, start) + INDENT + val.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + INDENT.length;
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+    // Indent/dedent every line touched by the selection.
+    const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+    const lines = val.slice(lineStart, end).split("\n");
+    let newStart, newEnd, newBlock;
+    if (e.shiftKey) {
+      let removedFirst = 0, removedTotal = 0;
+      newBlock = lines.map((ln, idx) => {
+        const m = ln.match(/^( {1,4}|\t)/);
+        const rem = m ? m[0].length : 0;
+        if (idx === 0) removedFirst = rem;
+        removedTotal += rem;
+        return ln.slice(rem);
+      }).join("\n");
+      newStart = Math.max(lineStart, start - removedFirst);
+      newEnd = end - removedTotal;
+    } else {
+      newBlock = lines.map(ln => INDENT + ln).join("\n");
+      newStart = start + INDENT.length;
+      newEnd = end + INDENT.length * lines.length;
+    }
+    ta.value = val.slice(0, lineStart) + newBlock + val.slice(end);
+    ta.selectionStart = newStart;
+    ta.selectionEnd = newEnd;
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+function attachCodeRunner(parentEl, getCode, getTests, runnerId, setupCode) {
+  const panel = document.createElement("div");
+  panel.className = "code-runner";
+  panel.dataset.runnerId = runnerId;
+  const hasTests = typeof getTests === "function" && (getTests() || []).length > 0;
+  panel.innerHTML = `
+    <div class="code-runner-controls">
+      <button data-act="run">▶ Run</button>
+      ${hasTests ? `<button data-act="test">✓ Run tests</button>` : ""}
+      <span class="code-runner-status"></span>
+    </div>
+    <div class="code-runner-output" hidden></div>
+  `;
+  parentEl.appendChild(panel);
+
+  const status = panel.querySelector(".code-runner-status");
+  const output = panel.querySelector(".code-runner-output");
+
+  const showOutput = (text, kind) => {
+    output.textContent = text;
+    output.className = "code-runner-output" + (kind ? " " + kind : "");
+    output.hidden = false;
+  };
+
+  panel.querySelector('[data-act="run"]').onclick = async () => {
+    status.textContent = "Running…";
+    output.hidden = true;
+    try {
+      await loadPyodideIfNeeded(status);
+      await resetPythonNamespace();
+      const setup = setupCode || "";
+      const full = setup + "\n" + getCode();
+      const result = await runPython(full);
+      status.textContent = "";
+      if (result.error) {
+        showOutput(result.stdout + result.stderr + "\n" + result.error, "error");
+      } else {
+        const body = (result.stdout || "") + (result.stderr || "");
+        showOutput(body || "(no output)", body ? null : null);
+      }
+    } catch (e) {
+      status.textContent = "";
+      showOutput("Loader error: " + e.message, "error");
+    }
+  };
+
+  const testBtn = panel.querySelector('[data-act="test"]');
+  if (testBtn) {
+    testBtn.onclick = async () => {
+      status.textContent = "Running tests…";
+      output.hidden = true;
+      try {
+        await loadPyodideIfNeeded(status);
+        await resetPythonNamespace();
+        const setup = setupCode || "";
+        // Run setup + user code first
+        const setupResult = await runPython(setup + "\n" + getCode());
+        if (setupResult.error) {
+          status.textContent = "";
+          showOutput("Setup / your code failed:\n" + setupResult.stderr + "\n" + setupResult.error, "error");
+          return;
+        }
+        // Run each test independently and collect results
+        const tests = getTests();
+        const lines = [];
+        let passed = 0, failed = 0;
+        for (let i = 0; i < tests.length; i++) {
+          const t = tests[i];
+          const result = await runPython(t);
+          if (result.error) {
+            failed++;
+            lines.push(`FAIL  ${shortTestLabel(t)}`);
+            lines.push(`      ${result.error.split("\n").pop()}`);
+          } else {
+            passed++;
+            lines.push(`pass  ${shortTestLabel(t)}`);
+          }
+        }
+        status.textContent = "";
+        const summary = `${passed} passed, ${failed} failed\n\n` + lines.join("\n");
+        showOutput(summary, failed === 0 ? "success" : "error");
+      } catch (e) {
+        status.textContent = "";
+        showOutput("Loader error: " + e.message, "error");
+      }
+    };
+  }
+  return panel;
+}
+
+function shortTestLabel(testCode) {
+  const firstLine = testCode.trim().split("\n")[0];
+  return firstLine.length > 60 ? firstLine.slice(0, 57) + "…" : firstLine;
+}
+
+// Collect every chapter across all phases in document order, in syllabus checkbox lines
+// like "- [x] 1.1 ..." / "- [ ] 6.3 ...". Marks the first chapter of each phase (phaseStart).
+function parseSyllabusChapters(md) {
+  const items = [];
+  let curPhase = null, firstInPhase = false;
+  for (const line of md.split("\n")) {
+    const h2 = line.match(/^##\s+(.*)$/);
+    if (h2) {
+      const ph = h2[1].match(/^(Phase \d+)\b/);
+      if (ph) { curPhase = ph[1]; firstInPhase = true; }
+      else { curPhase = null; } // left the phases region (Session Log, etc.)
+      continue;
+    }
+    if (!curPhase) continue;
+    const m = line.match(/^\s*-\s+\[([ xX])\]\s*(.*)$/);
+    if (m) {
+      items.push({ done: m[1].toLowerCase() === "x", phase: curPhase, title: (m[2] || "").trim(), phaseStart: firstInPhase });
+      firstInPhase = false;
+    }
+  }
+  return items.length ? items : null;
+}
+
+function renderSyllabusProgress() {
+  const dots = document.getElementById("spDots");
+  const label = document.getElementById("spLabel");
+  const items = fs.syllabusProgress;
+  if (!items || !items.length) { dots.hidden = true; label.hidden = true; return; }
+  const total = items.length;
+  const done = items.filter(x => x.done).length;
+  let lastDone = -1;
+  items.forEach((x, i) => { if (x.done) lastDone = i; });
+  const fillPct = (lastDone >= 0 && total > 1) ? (lastDone / (total - 1)) * 100 : 0;
+
+  dots.innerHTML = "";
+  items.forEach(x => {
+    const d = document.createElement("div");
+    d.className = "sp-dot" + (x.done ? " done" : "") + (x.phaseStart ? " major" : "");
+    d.title = `${x.phase} · ${x.title}${x.done ? " ✓" : ""}`;
+    dots.appendChild(d);
+  });
+  dots.style.setProperty("--sp-fill", fillPct + "%");
+
+  const pct = Math.round((done / total) * 100);
+  label.textContent = `${done}/${total} · ${pct}%`;
+  document.getElementById("syllabusProgress").title = `Curriculum progress — ${done} of ${total} chapters complete (from SYLLABUS.md)`;
+  dots.hidden = false;
+  label.hidden = false;
+}
+
+function updateConnectionUI() {
+  const btn = document.getElementById("connectBtn");
+  if (fs.connected) {
+    btn.textContent = "Connected";
+    btn.classList.remove("disconnected");
+    btn.classList.add("connected");
+    btn.title = `Connected to "${fs.dirHandle?.name || ""}". Click to reconnect.`;
+  } else {
+    btn.textContent = fs.dirHandle ? "Reconnect" : "Connect";
+    btn.classList.add("disconnected");
+    btn.classList.remove("connected");
+  }
+}
+
+/* ===== clipboard + Ask Claude ===== */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); ta.remove(); return true; }
+    catch (err) { ta.remove(); return false; }
+  }
+}
+
+function openAskClaude(contextLabel, contextLines) {
+  modal(`
+    <h2>Ask Claude</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">
+      Type your question (optional). Click Copy and paste into the Claude Code chat in VSCode.
+    </p>
+    <label>Context</label>
+    <div class="context-preview" id="ask-ctx"></div>
+    <div class="field"><label>Your question (optional)</label><textarea id="ask-q" rows="3" placeholder="e.g. Why does this break on an empty list?"></textarea></div>
+    <div class="modal-actions">
+      <button class="ghost" data-act="cancel">Cancel</button>
+      <button class="primary" data-act="copy">Copy to clipboard</button>
+    </div>
+  `, root => {
+    root.querySelector("#ask-ctx").textContent = contextLines.join("\n");
+    root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+    root.querySelector('[data-act="copy"]').onclick = async () => {
+      const question = root.querySelector("#ask-q").value.trim();
+      const prompt = [
+        `Context from my study tool — ${contextLabel}:`,
+        "",
+        ...contextLines,
+        "",
+        question ? `My question: ${question}` : "(Please review and comment — no specific question.)"
+      ].join("\n");
+      const ok = await copyToClipboard(prompt);
+      if (ok) { toast("Copied. Paste into Claude Code chat."); root.remove(); }
+      else { toast("Copy failed — see console"); console.log(prompt); }
+    };
+  });
+}
+
+function shortQuizSlug(title) {
+  const first = String(title || "").trim().split(/\s+/)[0] || "quiz";
+  return first.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12);
+}
+
+function buildReviewPy() {
+  const quiz = fs.quizzes.get(activeQuizId);
+  if (!quiz) return "";
+  const date = new Date(activeSession ? activeSession.timestamp : Date.now());
+  const lines = [];
+
+  lines.push(`"""`);
+  lines.push(`Quiz Review — ${quiz.title}`);
+  lines.push(`Date: ${date.toISOString().slice(0, 10)}`);
+  lines.push(`Generated: ${date.toLocaleString()}`);
+  lines.push(`Source: study-tool (auto-exported)`);
+  lines.push(``);
+  lines.push(`Mirrors the website layout per question:`);
+  lines.push(`  prompt → my answer → auto-grade → self-rate → note → expected answer`);
+  lines.push(`"""`);
+  lines.push(``);
+  lines.push(`# =============================================================================`);
+  lines.push(`# ${quiz.title}`);
+  lines.push(`# =============================================================================`);
+  lines.push(``);
+
+  quiz.questions.forEach((q, i) => {
+    const r = activeSession ? activeSession.responses[i] : null;
+    const typeName = q.type === "mc" ? "multiple choice" : q.type === "text" ? "text" : "code";
+
+    lines.push(`# -----------------------------------------------------------------------------`);
+    lines.push(`# Q${i + 1}. ${q.prompt}`);
+    lines.push(`# Type: ${typeName}`);
+    lines.push(`# -----------------------------------------------------------------------------`);
+    lines.push(``);
+
+    if (q.type === "mc") {
+      lines.push(`# Options:`);
+      (q.options || []).forEach((opt, oi) => {
+        const marker = q.correct === oi ? "   <- correct" : "";
+        lines.push(`#   [${oi}] ${opt}${marker}`);
+      });
+      lines.push(``);
+    }
+
+    if (r === null || r === undefined) {
+      lines.push(`# MY ANSWER: (not submitted)`);
+    } else if (q.type === "mc") {
+      const mark = r.correct === true ? "   [correct]" : r.correct === false ? "   [incorrect]" : "";
+      const val = r.value !== null && r.value !== undefined
+        ? `[${r.value}] ${q.options[r.value]}`
+        : "(none chosen)";
+      lines.push(`# MY ANSWER: ${val}${mark}`);
+    } else if (q.type === "text") {
+      const mark = r.correct === true ? (r.override ? "   [self-marked correct]" : "   [correct]") : r.correct === false ? "   [incorrect]" : "";
+      lines.push(`# MY ANSWER: ${r.value || "(empty)"}${mark}`);
+    } else if (q.type === "code") {
+      lines.push(`# MY ANSWER:`);
+      const codeLines = (r.value || "").split("\n");
+      if (codeLines.length === 0 || (codeLines.length === 1 && !codeLines[0])) {
+        lines.push(`#   (empty)`);
+      } else {
+        codeLines.forEach(cl => lines.push(`#   ${cl}`));
+      }
+    }
+
+    if (r && r.correct === true) lines.push(`# AUTO-GRADE: correct${r.override ? " (self-marked)" : ""}`);
+    else if (r && r.correct === false) lines.push(`# AUTO-GRADE: incorrect`);
+    else if (r && r.correct === null && (q.type === "mc" || (q.type === "text" && q.answer))) {
+      // null in a normally-graded type means not yet submitted via the grader path
+    }
+
+    lines.push(`# SELF-RATE: ${r && r.selfRating ? r.selfRating + "/5" : "—"}`);
+
+    if (r && r.note) {
+      lines.push(`# NOTE:`);
+      r.note.split("\n").forEach(nl => lines.push(`#   ${nl}`));
+    } else {
+      lines.push(`# NOTE: —`);
+    }
+
+    lines.push(``);
+
+    const expected = q.type === "mc"
+      ? (typeof q.correct === "number" ? `[${q.correct}] ${q.options[q.correct]}` : "(no correct option set)")
+      : (q.answer || "(no reference answer set)");
+    lines.push(`# +-- EXPECTED ANSWER ----------------------------------------------------------`);
+    expected.split("\n").forEach(el => lines.push(`# | ${el}`));
+    lines.push(`# +-----------------------------------------------------------------------------`);
+    lines.push(``);
+    lines.push(``);
+  });
+
+  return lines.join("\n");
+}
+
+function downloadReviewPy() {
+  if (!activeQuizId) return;
+  const quiz = fs.quizzes.get(activeQuizId);
+  if (!quiz) return;
+  const content = buildReviewPy();
+  const date = new Date(activeSession ? activeSession.timestamp : Date.now()).toISOString().slice(0, 10);
+  const filename = `Review_${date}_${shortQuizSlug(quiz.title)}.py`;
+  const blob = new Blob([content], { type: "text/x-python" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Saved ${filename}`);
+}
+
+async function sendSessionToClaude() {
+  if (!activeQuizId || !activeSession) return;
+  const quiz = fs.quizzes.get(activeQuizId);
+  if (!quiz) return;
+  const lines = [
+    `Please review my quiz session for "${quiz.title}" (${new Date(activeSession.timestamp).toLocaleString()}):`,
+    ""
+  ];
+  quiz.questions.forEach((q, i) => {
+    lines.push(`--- Q${i + 1} (${q.type}) ---`);
+    lines.push(`Prompt: ${q.prompt}`);
+    if (q.type === "mc") {
+      q.options.forEach((opt, oi) => lines.push(`  ${oi}: ${opt}${q.correct === oi ? "  [correct]" : ""}`));
+    } else if (q.answer) {
+      lines.push(`Expected: ${q.answer}`);
+    }
+    const r = activeSession.responses[i];
+    if (r === null || r === undefined) {
+      lines.push(`My answer: (skipped)`);
+    } else if (q.type === "mc") {
+      const mark = r.correct === true ? " [✓]" : r.correct === false ? " [✗]" : "";
+      lines.push(`My answer: ${r.value !== null && r.value !== undefined ? q.options[r.value] : "(none chosen)"}${mark}`);
+    } else {
+      lines.push(`My answer:`);
+      lines.push((r.value || "").split("\n").map(l => "  " + l).join("\n"));
+      if (r.correct === true) lines.push(r.override ? `Self-marked: correct` : `Auto-graded: correct`);
+      else if (r.correct === false) lines.push(`Auto-graded: incorrect`);
+    }
+    if (r && r.selfRating) lines.push(`Self-rate: ${r.selfRating}/5`);
+    if (r && r.note) lines.push(`Note: ${r.note}`);
+    lines.push("");
+  });
+  lines.push("Please go through each one and tell me what I got right, what to revisit, and any patterns in my misses.");
+  const ok = await copyToClipboard(lines.join("\n"));
+  if (ok) toast("Session copied. Paste in Claude Code chat.");
+  else toast("Copy failed — see console");
+}
+
+/* ===== tab nav ===== */
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const target = btn.dataset.tab;
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === target + "View"));
+    prefs.lastTab = target;
+    savePrefs();
+    if (target === "plan") renderPlan();
+  });
+});
+
+/* ===== plan (job search) ===== */
+const PLAN_DOCS = [
+  {
+    id: "action-plan",
+    title: "Action Plan",
+    html: `
+      <p class="plan-intro">Goal: land a frontend/web (or tech-adjacent) job — building genuine, <em>explainable</em> skill alongside AI-assisted shipping. Roughly in order.</p>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>1. Learn the “why” behind the fitness app</h2><span class="plan-ready">first</span></div>
+        <p class="plan-brief">Top priority — before shipping anything else.</p>
+        <ul class="plan-notes">
+          <li>Explain it out loud until I can defend it cold: MobX, DI, migrations, routing.</li>
+          <li>Understanding before recall — turn each gap into a lesson/flashcard.</li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>2. Build 2 simple apps</h2><span class="plan-ready">next</span></div>
+        <p class="plan-brief">To prep for live-coding interviews (frontend/web).</p>
+        <ul class="plan-notes">
+          <li>From scratch (e.g. a to-do app). AI as <em>tutor</em>, then rebuild solo — no-AI muscle.</li>
+          <li>React + vanilla JS. Deploy live + push to GitHub. Quality &gt; quantity.</li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>3. Apply to bridge roles</h2><span class="plan-ready">in parallel</span></div>
+        <p class="plan-brief">Tier 1–2 on the Job Search Roadmap. Start soon — it's a slow funnel.</p>
+        <ul class="plan-notes">
+          <li>Tailor a resume per role cluster; aim above $20/hr for dev roles.</li>
+          <li>Referrals + networking = biggest lever. Set up LinkedIn.</li>
+          <li>Behavioral/STAR prep + a mock interview or two. Track applications.</li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>4. Keep DSA + interview prep going</h2><span class="plan-ready">ongoing</span></div>
+        <ul class="plan-notes">
+          <li>Steady consistency (the curriculum) — long game toward big-tech SWE.</li>
+          <li>Don't let it crowd out the practical work above.</li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>5. Finish &amp; ship the Swift app</h2><span class="plan-ready">later</span></div>
+        <p class="plan-brief">After the fitness-app “why” is solid.</p>
+        <ul class="plan-notes">
+          <li>Vibe-code to finish — but make it actually work and lock the Firebase security rules.</li>
+          <li>Understand what ships; frame honestly (hand-built core + AI-accelerated).</li>
+          <li>Don't let it block applying.</li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>Day job</h2><span class="plan-ready">ongoing</span></div>
+        <ul class="plan-notes">
+          <li>Keep vibe-coding the paid work app (builds prompt skill). Understand the output; don't hand-code on the clock.</li>
+        </ul>
+      </div>
+    `
+  },
+  {
+    id: "job-roadmap",
+    title: "Job Search Roadmap",
+    html: `
+      <p class="plan-intro">Approximate ranges, Seattle-metro-leaning (national runs ~15–25% lower). Within each tier, roles are ordered easiest&nbsp;→&nbsp;hardest to get hired.</p>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>Tier 1 — Tech-adjacent</h2><span class="plan-ready">Ready: now</span></div>
+        <p class="plan-brief">Low coding bar; leverage existing exposure. Apply this week.</p>
+        <ul class="plan-jobs">
+          <li><span class="pj-title">Data Annotation / AI Trainer <em>(contract)</em></span><span class="pj-pay">$18–40/hr</span></li>
+          <li><span class="pj-title">Technical / IT Support, Help Desk</span><span class="pj-pay">$22–30/hr · ~$46–62k</span></li>
+          <li><span class="pj-title">Manual QA Tester</span><span class="pj-pay">$22–32/hr · ~$46–66k</span></li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>Tier 2 — Junior dev-adjacent</h2><span class="plan-ready">~1–3 months</span></div>
+        <p class="plan-brief">Needs an explainable project + light practical prep.</p>
+        <ul class="plan-jobs">
+          <li><span class="pj-title">QA Automation / Junior SDET</span><span class="pj-pay">$28–40/hr · ~$60–85k</span></li>
+          <li><span class="pj-title">Implementation / Solutions Engineer</span><span class="pj-pay">$28–38/hr · ~$58–80k</span></li>
+          <li><span class="pj-title">Junior Web Developer <em>(agency/SMB)</em></span><span class="pj-pay">$25–38/hr · ~$55–80k</span></li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>Tier 3 — Junior software engineer (your stack)</h2><span class="plan-ready">~3–6 months</span></div>
+        <p class="plan-brief">Real dev roles; explainable Angular app + practice reps + behavioral prep.</p>
+        <ul class="plan-jobs">
+          <li><span class="pj-title">Junior Frontend Developer <em>(Angular)</em></span><span class="pj-pay">$30–45/hr · ~$65–95k</span></li>
+          <li><span class="pj-title">Junior Full-Stack Developer</span><span class="pj-pay">$32–48/hr · ~$70–100k</span></li>
+          <li><span class="pj-title">Junior Mobile / Hybrid Dev <em>(Ionic/iOS) — your differentiator</em></span><span class="pj-pay">$30–45/hr · ~$65–95k</span></li>
+        </ul>
+      </div>
+
+      <div class="plan-tier">
+        <div class="plan-tier-head"><h2>Tier 4 — Big-tech / heavy-DSA SWE</h2><span class="plan-ready">~9–18+ months</span></div>
+        <p class="plan-brief">The curriculum + heavy LeetCode; highest bar, the long game.</p>
+        <ul class="plan-jobs">
+          <li><span class="pj-title">SWE I <em>(mid-size / non-FAANG)</em></span><span class="pj-pay">$40–55/hr · ~$85–115k</span></li>
+          <li><span class="pj-title">New-grad SWE <em>(big tech)</em></span><span class="pj-pay">$55–80/hr · ~$115k–180k+</span></li>
+        </ul>
+      </div>
+    `
+  }
+];
+let activePlanId = PLAN_DOCS[0] ? PLAN_DOCS[0].id : null;
+
+function renderPlan() {
+  const list = document.getElementById("planList");
+  const title = document.getElementById("planTitle");
+  const body = document.getElementById("planBody");
+  if (!list) return;
+  if (!PLAN_DOCS.some(d => d.id === activePlanId)) activePlanId = PLAN_DOCS[0]?.id ?? null;
+
+  list.innerHTML = "";
+  PLAN_DOCS.forEach(doc => {
+    const li = document.createElement("li");
+    li.dataset.id = doc.id;
+    li.classList.toggle("active", doc.id === activePlanId);
+    li.innerHTML = `<span class="name"></span>`;
+    li.querySelector(".name").textContent = doc.title;
+    li.addEventListener("click", () => { activePlanId = doc.id; renderPlan(); });
+    list.appendChild(li);
+  });
+
+  const active = PLAN_DOCS.find(d => d.id === activePlanId);
+  if (active) {
+    title.textContent = active.title;
+    body.innerHTML = active.html;
+  } else {
+    title.textContent = "—";
+    body.innerHTML = `<div class="placeholder">No plan documents yet.</div>`;
+  }
+}
+
+/* ===== modal helper ===== */
+function modal(contentHtml, onMount) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `<div class="modal">${contentHtml}</div>`;
+  document.body.appendChild(backdrop);
+  backdrop.addEventListener("click", e => { if (e.target === backdrop) backdrop.remove(); });
+  if (onMount) onMount(backdrop);
+  const firstInput = backdrop.querySelector("input, textarea, select");
+  if (firstInput) firstInput.focus();
+  return backdrop;
+}
+
+/* ===== flashcard face rendering ===== */
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+// Multi-line content (code / diagrams) → left-aligned monospace box with real
+// indentation. Single-line content → centered prose, with `inline code` styled.
+function appendProse(el, t) {
+  t = t.replace(/^\n+|\n+$/g, "");
+  if (!t) return;
+  const div = document.createElement("div");
+  div.className = "face-text";
+  div.innerHTML = escapeHtml(t).replace(/`([^`]+)`/g, "<code>$1</code>");
+  el.appendChild(div);
+}
+function appendCode(el, code) {
+  code = code.replace(/^\n+/, "").replace(/\n+$/, "");
+  if (!code) return;
+  const pre = document.createElement("pre");
+  pre.className = "card-code";
+  pre.textContent = code;
+  el.appendChild(pre);
+}
+function setFaceContent(el, text) {
+  text = text || "";
+  el.classList.remove("has-code");
+  if (text.includes("```")) {
+    // Fenced: ``` blocks → left-aligned code boxes; everything else → prose.
+    el.classList.add("has-code");
+    el.innerHTML = "";
+    text.split("```").forEach((part, i) => (i % 2 === 1 ? appendCode(el, part) : appendProse(el, part)));
+  } else {
+    // No fences → prose (line breaks preserved by the face's pre-wrap). Only fenced
+    // ``` blocks become monospace code boxes.
+    el.innerHTML = escapeHtml(text).replace(/`([^`]+)`/g, "<code>$1</code>");
+  }
+}
+
+/* ===== categories ===== */
+function getCategorySorted() {
+  return [...state.categories].sort((a, b) => a.order - b.order);
+}
+function getCardsForCategory(catId) {
+  return state.cards.filter(c => c.categoryId === catId).sort((a, b) => a.order - b.order);
+}
+
+function renderCategories() {
+  const list = document.getElementById("categoriesList");
+  list.innerHTML = "";
+
+  // Always-present Review Queue pseudo-category at the top
+  const queueCount = (state.reviewQueue || []).length;
+  const queueLi = document.createElement("li");
+  queueLi.dataset.id = "__queue__";
+  queueLi.classList.toggle("active", activeCategoryId === "__queue__");
+  queueLi.classList.toggle("pinned", prefs.pinnedCategoryId === "__queue__");
+  const queuePinned = prefs.pinnedCategoryId === "__queue__";
+  queueLi.innerHTML = `
+    <span class="name">★ Review queue</span>
+    <button class="pin-btn" title="${queuePinned ? "Unpin" : "Pin as default"}">${queuePinned ? "●" : "○"}</button>
+    <span class="count">${queueCount}</span>
+  `;
+  queueLi.addEventListener("click", () => selectCategory("__queue__"));
+  queueLi.querySelector(".pin-btn").addEventListener("click", e => {
+    e.stopPropagation();
+    if (prefs.pinnedCategoryId === "__queue__") delete prefs.pinnedCategoryId;
+    else prefs.pinnedCategoryId = "__queue__";
+    savePrefs();
+    renderCategories();
+  });
+  list.appendChild(queueLi);
+
+  const cats = getCategorySorted();
+  if (cats.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.innerHTML = `No categories yet.<br>Click + to add one.`;
+    list.appendChild(empty);
+    return;
+  }
+  cats.forEach(cat => {
+    const count = state.cards.filter(c => c.categoryId === cat.id).length;
+    const isPinned = prefs.pinnedCategoryId === cat.id;
+    const li = document.createElement("li");
+    li.dataset.id = cat.id;
+    li.draggable = true;
+    li.classList.toggle("active", cat.id === activeCategoryId);
+    li.classList.toggle("pinned", isPinned);
+    li.innerHTML = `
+      <span class="name"></span>
+      <button class="pin-btn" title="${isPinned ? "Unpin (was set as default)" : "Pin as default — opens on refresh"}">${isPinned ? "●" : "○"}</button>
+      <span class="count">${count}</span>
+    `;
+    li.querySelector(".name").textContent = cat.name;
+    li.addEventListener("click", () => selectCategory(cat.id));
+    li.querySelector(".pin-btn").addEventListener("click", e => {
+      e.stopPropagation();
+      if (prefs.pinnedCategoryId === cat.id) delete prefs.pinnedCategoryId;
+      else prefs.pinnedCategoryId = cat.id;
+      savePrefs();
+      renderCategories();
+    });
+    attachDrag(li, "category");
+    list.appendChild(li);
+  });
+}
+
+function selectCategory(id) {
+  activeCategoryId = id;
+  singleIdx = 0;
+  editMode = false;
+  prefs.lastCategoryId = id;
+  savePrefs();
+  renderCategories();
+  renderCardsBody();
+}
+
+/* ===== flashcards view ===== */
+function renderCardsBody() {
+  const body = document.getElementById("cardsBody");
+  const title = document.getElementById("currentCatTitle");
+  const addBtn = document.getElementById("addCardBtn");
+  const renameBtn = document.getElementById("renameCatBtn");
+  const deleteBtn = document.getElementById("deleteCatBtn");
+  const viewBtn = document.getElementById("viewModeBtn");
+  const editBtn = document.getElementById("editModeBtn");
+
+  if (!activeCategoryId) {
+    title.textContent = "—";
+    [addBtn, renameBtn, deleteBtn, viewBtn, editBtn].forEach(b => b.hidden = true);
+    body.innerHTML = `<div class="placeholder">Pick or create a category to add flashcards.</div>`;
+    return;
+  }
+
+  const isQueue = activeCategoryId === "__queue__";
+  let cards = [];
+
+  if (isQueue) {
+    title.textContent = "★ Review queue";
+    // Queue: no rename/delete/add-card. Keep view + edit toggles.
+    addBtn.hidden = true;
+    renameBtn.hidden = true;
+    deleteBtn.hidden = true;
+    viewBtn.hidden = false;
+    editBtn.hidden = false;
+    cards = (state.reviewQueue || [])
+      .map(cardId => state.cards.find(c => c.id === cardId))
+      .filter(Boolean);
+  } else {
+    const cat = state.categories.find(c => c.id === activeCategoryId);
+    if (!cat) { activeCategoryId = null; renderCardsBody(); return; }
+    title.textContent = cat.name;
+    [addBtn, renameBtn, deleteBtn, viewBtn, editBtn].forEach(b => b.hidden = false);
+    cards = getCardsForCategory(activeCategoryId);
+  }
+
+  viewBtn.textContent = viewMode === "grid" ? "Single" : "Grid";
+  viewBtn.classList.toggle("active", viewMode === "single");
+  editBtn.textContent = editMode ? "Done" : "Edit";
+  editBtn.classList.toggle("active", editMode);
+
+  body.innerHTML = "";
+
+  if (!isQueue) {
+    // Collapsible overview + quick add (not for the queue)
+    const cat = state.categories.find(c => c.id === activeCategoryId);
+    const collapsible = document.createElement("details");
+    collapsible.className = "collapsible";
+    collapsible.open = !!cat.summary || cards.length === 0;
+    collapsible.innerHTML = `
+      <summary>Overview &amp; Quick add</summary>
+      <div class="collapsible-content">
+        <div class="quick-add-row">
+          <label>Overview</label>
+          <input id="catSummaryInput" placeholder="Optional summary for this category">
+        </div>
+        <div class="quick-add-row">
+          <label>Quick add</label>
+          <input id="qaFront" placeholder="Front">
+          <input id="qaBack" placeholder="Back">
+          <button id="qaSubmit" class="primary">Add</button>
+        </div>
+      </div>
+    `;
+    body.appendChild(collapsible);
+
+    collapsible.querySelector("#catSummaryInput").value = cat.summary || "";
+    collapsible.querySelector("#catSummaryInput").addEventListener("change", e => {
+      cat.summary = e.target.value;
+      saveState();
+      toast("Summary saved");
+    });
+    collapsible.querySelector("#qaSubmit").addEventListener("click", quickAddCard);
+    collapsible.querySelector("#qaBack").addEventListener("keydown", e => {
+      if (e.key === "Enter") quickAddCard();
+    });
+  }
+
+  if (cards.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.innerHTML = isQueue
+      ? `Review queue is empty.<br>Add cards by clicking <strong>+ Queue</strong> on any flashcard, quiz question, or lesson exercise.`
+      : `No cards yet. Use Quick add above or click "+ Card".`;
+    body.appendChild(empty);
+    return;
+  }
+
+  if (viewMode === "grid") {
+    const grid = document.createElement("div");
+    grid.className = "flashcards-grid";
+    cards.forEach(card => grid.appendChild(renderFlashcard(card)));
+    body.appendChild(grid);
+  } else {
+    if (singleIdx >= cards.length) singleIdx = cards.length - 1;
+    if (singleIdx < 0) singleIdx = 0;
+    const wrap = document.createElement("div");
+    wrap.className = "flashcards-single";
+    wrap.appendChild(renderFlashcard(cards[singleIdx]));
+
+    const nav = document.createElement("div");
+    nav.className = "single-nav";
+    nav.innerHTML = `
+      <button id="prevCard">‹ Prev</button>
+      <span class="index-label">${singleIdx + 1} / ${cards.length}</span>
+      <button id="nextCard">Next ›</button>
+    `;
+    wrap.appendChild(nav);
+    body.appendChild(wrap);
+
+    document.getElementById("prevCard").disabled = singleIdx === 0;
+    document.getElementById("nextCard").disabled = singleIdx === cards.length - 1;
+    document.getElementById("prevCard").onclick = () => { if (singleIdx > 0) { singleIdx--; renderCardsBody(); } };
+    document.getElementById("nextCard").onclick = () => { if (singleIdx < cards.length - 1) { singleIdx++; renderCardsBody(); } };
+  }
+}
+
+function renderFlashcard(card) {
+  const wrap = document.createElement("div");
+  wrap.className = "flashcard-wrap";
+
+  const flipped = !!cardFlippedState[card.id];
+  const cls = "flashcard" + (flipped ? " flipped" : "") + (editMode ? " editing" : "");
+
+  const frontHtml = editMode
+    ? `<textarea class="face-edit" data-side="front" placeholder="Front"></textarea>`
+    : `<div class="face-content"></div>`;
+  const backHtml = editMode
+    ? `<textarea class="face-edit" data-side="back" placeholder="Back"></textarea>`
+    : `<div class="face-content"></div>`;
+
+  const inQueue = (state.reviewQueue || []).includes(card.id);
+
+  wrap.innerHTML = `
+    <div class="${cls}" data-id="${card.id}" draggable="${!editMode}">
+      <div class="flashcard-inner">
+        <div class="flashcard-face flashcard-front">
+          <div class="face-corner">Front</div>
+          ${inQueue ? `<div class="queue-indicator" title="In review queue">★</div>` : ""}
+          ${frontHtml}
+        </div>
+        <div class="flashcard-face flashcard-back">
+          <div class="face-corner">Back</div>
+          ${backHtml}
+        </div>
+      </div>
+    </div>
+    ${editMode ? `
+      <div class="flashcard-controls">
+        <button data-act="flip">Show ${flipped ? "front" : "back"}</button>
+        <button data-act="del" class="danger">Delete</button>
+      </div>` : ""}
+    <div class="card-foot${editMode ? " always-show" : ""}">
+      <button class="ask-claude-btn" data-act="queue">${inQueue ? "★ In queue" : "+ Queue"}</button>
+      <button class="ask-claude-btn" data-act="ask">Ask Claude →</button>
+    </div>
+  `;
+
+  const flashcardEl = wrap.querySelector(".flashcard");
+
+  if (editMode) {
+    const frontEdit = wrap.querySelector('[data-side="front"]');
+    const backEdit = wrap.querySelector('[data-side="back"]');
+    frontEdit.value = card.front;
+    backEdit.value = card.back;
+    frontEdit.addEventListener("change", () => { card.front = frontEdit.value; saveState(); });
+    backEdit.addEventListener("change", () => { card.back = backEdit.value; saveState(); });
+    // Prevent flip when clicking inside textarea
+    [frontEdit, backEdit].forEach(t => t.addEventListener("click", e => e.stopPropagation()));
+
+    wrap.querySelector('[data-act="flip"]').onclick = e => {
+      e.stopPropagation();
+      cardFlippedState[card.id] = !cardFlippedState[card.id];
+      flashcardEl.classList.toggle("flipped");
+      e.currentTarget.textContent = `Show ${flashcardEl.classList.contains("flipped") ? "front" : "back"}`;
+    };
+    wrap.querySelector('[data-act="del"]').onclick = e => {
+      e.stopPropagation();
+      if (confirm("Delete this card?")) {
+        state.cards = state.cards.filter(c => c.id !== card.id);
+        state.reviewQueue = (state.reviewQueue || []).filter(id => id !== card.id);
+        delete cardFlippedState[card.id];
+        saveState();
+        renderCardsBody();
+        renderCategories();
+      }
+    };
+  } else {
+    setFaceContent(wrap.querySelector(".flashcard-front .face-content"), card.front);
+    setFaceContent(wrap.querySelector(".flashcard-back .face-content"), card.back);
+    flashcardEl.addEventListener("click", () => {
+      cardFlippedState[card.id] = !cardFlippedState[card.id];
+      flashcardEl.classList.toggle("flipped");
+    });
+    attachDrag(flashcardEl, "card");
+  }
+
+  wrap.querySelector('[data-act="queue"]').onclick = e => {
+    e.stopPropagation();
+    state.reviewQueue = state.reviewQueue || [];
+    const idx = state.reviewQueue.indexOf(card.id);
+    if (idx >= 0) {
+      state.reviewQueue.splice(idx, 1);
+      toast("Removed from review queue");
+    } else {
+      state.reviewQueue.push(card.id);
+      toast("Added to review queue");
+    }
+    saveState();
+    renderCardsBody();
+    renderCategories();
+  };
+
+  wrap.querySelector('[data-act="ask"]').onclick = e => {
+    e.stopPropagation();
+    const cat = state.categories.find(c => c.id === card.categoryId);
+    openAskClaude(`flashcard from "${cat ? cat.name : 'category'}"`, [
+      `Front: ${card.front}`,
+      `Back: ${card.back || '(empty)'}`
+    ]);
+  };
+
+  return wrap;
+}
+
+function quickAddCard() {
+  if (!activeCategoryId) { toast("Pick a category first"); return; }
+  const front = document.getElementById("qaFront").value.trim();
+  const back = document.getElementById("qaBack").value.trim();
+  if (!front) { toast("Front required"); return; }
+  const order = state.cards.filter(c => c.categoryId === activeCategoryId).length;
+  state.cards.push({ id: uid(), categoryId: activeCategoryId, front, back, order });
+  saveState();
+  document.getElementById("qaFront").value = "";
+  document.getElementById("qaBack").value = "";
+  renderCardsBody();
+  renderCategories();
+  setTimeout(() => { const f = document.getElementById("qaFront"); if (f) f.focus(); }, 0);
+}
+
+/* ===== top-of-pane buttons ===== */
+document.getElementById("viewModeBtn").addEventListener("click", () => {
+  viewMode = viewMode === "grid" ? "single" : "grid";
+  renderCardsBody();
+});
+document.getElementById("editModeBtn").addEventListener("click", () => {
+  editMode = !editMode;
+  renderCardsBody();
+});
+document.getElementById("addCatBtn").addEventListener("click", () => {
+  const name = prompt("New category name:");
+  if (!name) return;
+  const id = uid();
+  state.categories.push({ id, name: name.trim(), summary: "", order: state.categories.length });
+  saveState();
+  activeCategoryId = id;
+  renderCategories();
+  renderCardsBody();
+});
+document.getElementById("renameCatBtn").addEventListener("click", () => {
+  if (!activeCategoryId) return;
+  const cat = state.categories.find(c => c.id === activeCategoryId);
+  if (!cat) return;
+  const name = prompt("Rename category:", cat.name);
+  if (!name) return;
+  cat.name = name.trim();
+  saveState();
+  renderCategories();
+  renderCardsBody();
+});
+document.getElementById("deleteCatBtn").addEventListener("click", () => {
+  if (!activeCategoryId) return;
+  const cat = state.categories.find(c => c.id === activeCategoryId);
+  if (!cat) return;
+  const count = state.cards.filter(c => c.categoryId === activeCategoryId).length;
+  if (!confirm(`Delete "${cat.name}" and its ${count} card${count === 1 ? "" : "s"}?`)) return;
+  state.cards = state.cards.filter(c => c.categoryId !== activeCategoryId);
+  state.categories = state.categories.filter(c => c.id !== activeCategoryId);
+  activeCategoryId = null;
+  saveState();
+  renderCategories();
+  renderCardsBody();
+});
+document.getElementById("addCardBtn").addEventListener("click", () => {
+  if (!activeCategoryId) return;
+  modal(`
+    <h2>New card</h2>
+    <div class="field"><label>Front</label><input id="nc-front" placeholder="e.g. Floor division"></div>
+    <div class="field"><label>Back</label><textarea id="nc-back" rows="6"></textarea></div>
+    <div class="modal-actions">
+      <button class="ghost" data-act="cancel">Cancel</button>
+      <button class="primary" data-act="save">Add</button>
+    </div>
+  `, root => {
+    const save = () => {
+      const front = root.querySelector("#nc-front").value.trim();
+      const back = root.querySelector("#nc-back").value;
+      if (!front) return;
+      const order = state.cards.filter(c => c.categoryId === activeCategoryId).length;
+      state.cards.push({ id: uid(), categoryId: activeCategoryId, front, back, order });
+      saveState();
+      root.remove();
+      renderCardsBody();
+      renderCategories();
+    };
+    root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+    root.querySelector('[data-act="save"]').onclick = save;
+  });
+});
+
+/* ===== source-linked flashcards =====
+   A card created from a quiz question / lesson exercise / lesson section
+   stores a sourceRef so we can detect duplicates on later "+ Flashcard" clicks.
+*/
+
+// Idempotent migration: link seed cards to sources + add concept tags.
+// Runs every load — only writes fields that are missing.
+function migrateCardSourceRefs() {
+  // Card ID -> source ref (location-based).
+  const sourceMap = {
+    "c-str-immut":   { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 0 },
+    "c-counter":     { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 2 },
+    "c-set-ops":     { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 4 },
+    "c-cont-dup":    { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 6 },
+    "c-is-none":     { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 7 },
+    "c-dict-keys":   { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 8 },
+    "c-hash-coll":   { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 9 },
+    "c-hash-resize": { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 10 },
+    "c-n-plus-m":    { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 11 },
+    "c-early-exit":  { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 12 },
+    "c-ll-traverse": { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 14 },
+    "c-two-sum":     { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 15 },
+    "c-count-scan":  { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 16 },
+    "c-ll-reverse":  { type: "quiz-question", quizId: "quiz-breadth", questionIdx: 17 },
+    "c-floor":       { type: "lesson-exercise", lessonId: "lesson-1.3", exerciseId: "1.3-q1" },
+    "c-range-rev":   { type: "lesson-exercise", lessonId: "lesson-1.4", exerciseId: "1.4-q4" },
+    "c-get":         { type: "lesson-exercise", lessonId: "lesson-1.4", exerciseId: "1.4-q1" },
+    "c-set-add":     { type: "lesson-exercise", lessonId: "lesson-1.4", exerciseId: "1.4-q2" },
+    "c-set-dedup":   { type: "lesson-exercise", lessonId: "lesson-1.4", exerciseId: "1.4-q3" },
+    "c-amortized":   { type: "lesson-exercise", lessonId: "lesson-1.4", exerciseId: "1.4-q6" },
+    "c-ll-remove":   { type: "lesson-exercise", lessonId: "lesson-1.4", exerciseId: "1.4-e4" },
+    "c-listnode":    { type: "lesson-section", lessonId: "lesson-1.4", section: "intro" },
+    "c-bigo-map":    { type: "lesson-section", lessonId: "lesson-1.1", section: "intro" }
+  };
+
+  // Card ID -> concept (topic-based). These can match across many sources.
+  const conceptMap = {
+    "c-neg-idx":      "negative-indexing",
+    "c-slicing":      "slicing-rules",
+    "c-insert-0":     "list-insert-front-cost",
+    "c-join":         "string-join",
+    "c-str-immut":    "string-immutability-on-loop",
+    "c-enumerate":    "enumerate-idiom",
+    "c-range-rev":    "range-reverse-traversal",
+    "c-range-lazy":   "range-lazy",
+    "c-floor":        "floor-division",
+    "c-is-none":      "is-none-check",
+    "c-dict-basics":  "dict-basics",
+    "c-del-d":        "dict-del",
+    "c-pop":          "dict-pop",
+    "c-get":          "dict-get",
+    "c-counter":      "dict-counter-idiom",
+    "c-setdefault":   "dict-setdefault-grouping",
+    "c-dict-keys":    "dict-keys-hashable",
+    "c-set-add":      "set-add-vs-append",
+    "c-set-dedup":    "set-dedup-duplicates",
+    "c-set-ops":      "set-operators",
+    "c-listnode":     "ll-listnode-class",
+    "c-ll-traverse":  "ll-canonical-traversal",
+    "c-ll-reverse":   "ll-3pointer-reverse",
+    "c-ll-3ptr-why":  "ll-3pointer-why",
+    "c-ll-remove":    "ll-remove-node",
+    "c-hash-int":     "hash-internals",
+    "c-hash-coll":    "hash-collisions-probing",
+    "c-hash-resize":  "hash-resize-load",
+    "c-amortized":    "amortized-O1",
+    "c-dict-vs-set":  "dict-vs-set-rule",
+    "c-two-sum":      "two-sum-dict-design",
+    "c-cont-dup":     "contains-duplicate-pattern",
+    "c-count-scan":   "count-then-scan-pattern",
+    "c-grouping":     "grouping-pattern",
+    "c-bigo-map":     "bigo-hierarchy",
+    "c-bigo-rules":   "bigo-rules",
+    "c-recursion":    "recursion-bigo",
+    "c-n-plus-m":     "bigo-n-plus-m",
+    "c-early-exit":   "early-exit-bigo",
+    "c-h-brute":      "habit-brute-force-first",
+    "c-h-dryrun":     "habit-dry-run",
+    "c-h-bool":       "habit-trace-booleans",
+    "c-h-diagram":    "habit-draw-diagrams",
+    "c-g-iter-mod":   "gotcha-modify-while-iter",
+    "c-g-slice-cop":  "gotcha-slice-copy",
+    "c-g-del-as-yg":  "gotcha-delete-as-you-go"
+  };
+
+  const linkedSources = [];
+  const linkedConcepts = [];
+  const conflicts = [];
+
+  state.cards.forEach(card => {
+    // Add sourceRef if missing and we have a mapping
+    if (!card.sourceRef) {
+      const m = sourceMap[card.id];
+      if (m && !state.cards.some(c => c !== card && sourceRefMatches(c.sourceRef, m))) {
+        card.sourceRef = m;
+        linkedSources.push(card.id);
+      } else if (m) {
+        conflicts.push(card.id);
+      }
+    }
+    // Add concept if missing
+    if (!card.concept) {
+      const c = conceptMap[card.id];
+      if (c) {
+        card.concept = c;
+        linkedConcepts.push(card.id);
+      }
+    }
+  });
+
+  if (linkedSources.length || linkedConcepts.length) {
+    saveState();
+    console.log(`[migration] sourceRef added to ${linkedSources.length} cards, concepts added to ${linkedConcepts.length}`);
+    if (conflicts.length) console.log(`[migration] sourceRef skipped (conflict):`, conflicts);
+    if (linkedSources.length || linkedConcepts.length) {
+      const parts = [];
+      if (linkedSources.length) parts.push(`${linkedSources.length} sources`);
+      if (linkedConcepts.length) parts.push(`${linkedConcepts.length} concepts`);
+      toast(`Linked ${parts.join(", ")}`);
+    }
+  }
+  return { linkedSources: linkedSources.length, linkedConcepts: linkedConcepts.length };
+}
+
+function sourceRefMatches(a, b) {
+  if (!a || !b) return false;
+  if (a.type !== b.type) return false;
+  if (a.quizId !== b.quizId) return false;
+  if (a.lessonId !== b.lessonId) return false;
+  if (a.exerciseId !== b.exerciseId) return false;
+  if (a.section !== b.section) return false;
+  if (a.questionIdx !== b.questionIdx) return false;
+  return true;
+}
+
+function findCardBySource(sourceRef, concept) {
+  // Prefer exact source match; fall back to concept match.
+  if (sourceRef) {
+    const byRef = state.cards.find(c => sourceRefMatches(c.sourceRef, sourceRef));
+    if (byRef) return { card: byRef, matchedBy: "source" };
+  }
+  if (concept) {
+    const byConcept = state.cards.find(c => c.concept && c.concept === concept);
+    if (byConcept) return { card: byConcept, matchedBy: "concept" };
+  }
+  return null;
+}
+
+function makeFlashcardFromSource(sourceRef, prefill, concept) {
+  const match = findCardBySource(sourceRef, concept);
+  if (!match) {
+    openQuickCardModal({ ...prefill, sourceRef, concept });
+    return;
+  }
+  openSourceConflictModal(match.card, sourceRef, prefill, concept, match.matchedBy);
+}
+
+function editCard(id) {
+  const card = state.cards.find(c => c.id === id);
+  if (!card) { toast("Card not found"); return; }
+  modal(`
+    <h2>Edit flashcard</h2>
+    <div class="field"><label>Front</label><input id="ec-front"></div>
+    <div class="field"><label>Back</label><textarea id="ec-back" rows="5"></textarea></div>
+    <div class="field"><label>Concept (optional — links cards across sources)</label><input id="ec-concept" placeholder="e.g. hash-collisions"></div>
+    <div class="modal-actions">
+      <button class="ghost" data-act="cancel">Cancel</button>
+      <button class="primary" data-act="save">Save</button>
+    </div>
+  `, root => {
+    root.querySelector("#ec-front").value = card.front || "";
+    root.querySelector("#ec-back").value = card.back || "";
+    root.querySelector("#ec-concept").value = card.concept || "";
+    root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+    root.querySelector('[data-act="save"]').onclick = () => {
+      card.front = root.querySelector("#ec-front").value;
+      card.back = root.querySelector("#ec-back").value;
+      const c = root.querySelector("#ec-concept").value.trim();
+      if (c) card.concept = c;
+      else delete card.concept;
+      saveState();
+      root.remove();
+      renderCardsBody();
+      renderCategories();
+      toast("Saved");
+    };
+  });
+}
+
+function openSourceConflictModal(existing, sourceRef, prefill, concept, matchedBy) {
+  const matchLabel = matchedBy === "concept"
+    ? `Matched by shared concept "${concept}" — this card was created from a different source but covers the same topic.`
+    : `This is the same source as the card.`;
+  modal(`
+    <h2>A flashcard already covers this</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 10px;">${matchLabel}</p>
+    <label>Existing card</label>
+    <div class="context-preview" id="sc-existing"></div>
+    <label>New content from source</label>
+    <div class="context-preview" id="sc-new"></div>
+    <div class="modal-actions" style="flex-wrap: wrap; gap: 6px;">
+      <button class="ghost" data-act="cancel">Cancel</button>
+      <button data-act="new">Create new (unlinked)</button>
+      <button data-act="edit">Edit existing</button>
+      <button class="primary" data-act="replace">Replace existing with new</button>
+    </div>
+  `, root => {
+    root.querySelector("#sc-existing").textContent =
+      `Front: ${existing.front}\nBack:  ${existing.back || "(empty)"}`;
+    root.querySelector("#sc-new").textContent =
+      `Front: ${prefill.front || ""}\nBack:  ${prefill.back || "(empty)"}`;
+    root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+    root.querySelector('[data-act="new"]').onclick = () => {
+      // Create without a sourceRef or concept so it doesn't conflict next time
+      root.remove();
+      openQuickCardModal({ ...prefill });
+    };
+    root.querySelector('[data-act="edit"]').onclick = () => {
+      root.remove();
+      editCard(existing.id);
+    };
+    root.querySelector('[data-act="replace"]').onclick = () => {
+      existing.front = prefill.front || existing.front;
+      existing.back = prefill.back !== undefined ? prefill.back : existing.back;
+      // If matched by concept, ensure the card carries it (in case it didn't)
+      if (concept && !existing.concept) existing.concept = concept;
+      saveState();
+      root.remove();
+      renderCardsBody();
+      renderCategories();
+      toast("Card updated");
+    };
+  });
+}
+
+function openQuickCardModal({ front = "", back = "", sourceRef = null, concept = null } = {}) {
+  modal(`
+    <h2>Quick card</h2>
+    <div class="field"><label>Category</label><select id="qc-cat"></select></div>
+    <div class="field"><label>Front</label><input id="qc-front" placeholder="Concept"></div>
+    <div class="field"><label>Back</label><textarea id="qc-back" rows="6"></textarea></div>
+    <div class="row" style="margin-top: 8px; gap: 16px;">
+      <label class="row" style="margin: 0;">
+        <input type="checkbox" id="qc-newcat" style="width:auto; margin-right: 6px;">
+        Create new category instead
+      </label>
+      <label class="row" style="margin: 0;">
+        <input type="checkbox" id="qc-queue" style="width:auto; margin-right: 6px;">
+        Also add to review queue
+      </label>
+    </div>
+    <div class="field" id="qc-newcat-field" style="display: none;">
+      <label>New category name</label>
+      <input id="qc-newcat-name">
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" data-act="cancel">Cancel</button>
+      <button class="primary" data-act="save">Add</button>
+    </div>
+  `, root => {
+    const sel = root.querySelector("#qc-cat");
+    getCategorySorted().forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      if (cat.id === activeCategoryId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (state.categories.length === 0) {
+      sel.disabled = true;
+      root.querySelector("#qc-newcat").checked = true;
+      root.querySelector("#qc-newcat-field").style.display = "block";
+    }
+    root.querySelector("#qc-front").value = front;
+    root.querySelector("#qc-back").value = back;
+    // If we have prefill, jump focus to front so user can edit it
+    if (front || back) {
+      setTimeout(() => root.querySelector("#qc-front").focus(), 0);
+    }
+    root.querySelector("#qc-newcat").addEventListener("change", e => {
+      root.querySelector("#qc-newcat-field").style.display = e.target.checked ? "block" : "none";
+      sel.disabled = e.target.checked;
+    });
+    const save = () => {
+      const frontVal = root.querySelector("#qc-front").value.trim();
+      const backVal = root.querySelector("#qc-back").value;
+      if (!frontVal) return;
+      let catId;
+      if (root.querySelector("#qc-newcat").checked) {
+        const name = root.querySelector("#qc-newcat-name").value.trim();
+        if (!name) return;
+        catId = uid();
+        state.categories.push({ id: catId, name, summary: "", order: state.categories.length });
+      } else {
+        catId = sel.value;
+        if (!catId) return;
+      }
+      const order = state.cards.filter(c => c.categoryId === catId).length;
+      const newId = uid();
+      const newCard = { id: newId, categoryId: catId, front: frontVal, back: backVal, order };
+      if (sourceRef) newCard.sourceRef = sourceRef;
+      if (concept) newCard.concept = concept;
+      state.cards.push(newCard);
+      if (root.querySelector("#qc-queue").checked) {
+        state.reviewQueue = state.reviewQueue || [];
+        state.reviewQueue.push(newId);
+      }
+      saveState();
+      root.remove();
+      renderCategories();
+      if (activeCategoryId === catId || !activeCategoryId || activeCategoryId === "__queue__") {
+        // Stay in the queue if user is in queue view; otherwise focus the new card's category
+        if (activeCategoryId !== "__queue__") activeCategoryId = catId;
+        renderCardsBody();
+      }
+      toast("Card added");
+    };
+    root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+    root.querySelector('[data-act="save"]').onclick = save;
+  });
+}
+
+
+/* ===== keyboard nav (single mode) ===== */
+document.addEventListener("keydown", e => {
+  const cardsActive = document.getElementById("cardsView").classList.contains("active");
+  if (!cardsActive || viewMode !== "single" || editMode || !activeCategoryId) return;
+  if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  const cards = getCardsForCategory(activeCategoryId);
+  if (cards.length === 0) return;
+  if (e.key === "ArrowLeft" && singleIdx > 0) { singleIdx--; renderCardsBody(); }
+  else if (e.key === "ArrowRight" && singleIdx < cards.length - 1) { singleIdx++; renderCardsBody(); }
+  else if (e.key === " ") { e.preventDefault(); cardFlippedState[cards[singleIdx].id] = !cardFlippedState[cards[singleIdx].id]; renderCardsBody(); }
+});
+
+/* ===== drag/drop ===== */
+let dragKind = null;
+let draggingId = null;
+function attachDrag(el, kind) {
+  el.addEventListener("dragstart", e => {
+    dragKind = kind;
+    draggingId = el.dataset.id;
+    el.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+  });
+  el.addEventListener("dragend", () => {
+    el.classList.remove("dragging");
+    document.querySelectorAll(".drop-target").forEach(d => d.classList.remove("drop-target"));
+    dragKind = null;
+    draggingId = null;
+  });
+  el.addEventListener("dragover", e => {
+    if (dragKind !== kind) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  });
+  el.addEventListener("drop", e => {
+    if (dragKind !== kind || !draggingId || draggingId === el.dataset.id) return;
+    e.preventDefault();
+    reorder(kind, draggingId, el.dataset.id);
+  });
+}
+function reorder(kind, fromId, toId) {
+  if (kind === "category") {
+    const cats = getCategorySorted();
+    const fromIdx = cats.findIndex(c => c.id === fromId);
+    const toIdx = cats.findIndex(c => c.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = cats.splice(fromIdx, 1);
+    cats.splice(toIdx, 0, moved);
+    cats.forEach((c, i) => c.order = i);
+    saveState();
+    renderCategories();
+  } else if (kind === "card") {
+    if (activeCategoryId === "__queue__") {
+      const q = state.reviewQueue || [];
+      const fromIdx = q.indexOf(fromId);
+      const toIdx = q.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return;
+      const [moved] = q.splice(fromIdx, 1);
+      q.splice(toIdx, 0, moved);
+      state.reviewQueue = q;
+      saveState();
+      renderCardsBody();
+      return;
+    }
+    const cards = getCardsForCategory(activeCategoryId);
+    const fromIdx = cards.findIndex(c => c.id === fromId);
+    const toIdx = cards.findIndex(c => c.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = cards.splice(fromIdx, 1);
+    cards.splice(toIdx, 0, moved);
+    cards.forEach((c, i) => c.order = i);
+    saveState();
+    renderCardsBody();
+  } else if (kind === "quiz") {
+    const quizzes = getQuizzesSorted();
+    const fromIdx = quizzes.findIndex(q => q.id === fromId);
+    const toIdx = quizzes.findIndex(q => q.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = quizzes.splice(fromIdx, 1);
+    quizzes.splice(toIdx, 0, moved);
+    quizzes.forEach((q, i) => q.order = i);
+    saveState();
+    renderQuizzes();
+  }
+}
+
+/* ===== quizzes (file-based) ===== */
+function getQuizzesSorted() {
+  return [...fs.quizzes.values()].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+}
+function renderQuizzes() {
+  const list = document.getElementById("quizzesList");
+  list.innerHTML = "";
+  if (!fs.connected) {
+    list.innerHTML = `<div class="empty-state">Click <strong>Connect</strong> to load quizzes from disk.</div>`;
+    return;
+  }
+  const quizzes = getQuizzesSorted();
+  if (quizzes.length === 0) {
+    list.innerHTML = `<div class="empty-state">No quizzes found in <code>quizzes/</code>.<br>Click + to create one.</div>`;
+    return;
+  }
+  quizzes.forEach(q => {
+    const li = document.createElement("li");
+    li.dataset.id = q.id;
+    li.classList.toggle("active", q.id === activeQuizId);
+    const attempts = fs.attempts.get(q.id) || [];
+    li.innerHTML = `<span class="name"></span><span class="count">${(q.questions || []).length}q · ${attempts.length}a</span>`;
+    li.querySelector(".name").textContent = q.title;
+    li.addEventListener("click", () => selectQuiz(q.id));
+    list.appendChild(li);
+  });
+}
+function selectQuiz(id) {
+  activeQuizId = id;
+  // Pick the latest attempt by default
+  const attempts = fs.attempts.get(id) || [];
+  activeSession = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+  prefs.lastQuizId = id;
+  savePrefs();
+  renderQuizzes();
+  renderQuizBody();
+}
+function renderQuizBody() {
+  const body = document.getElementById("quizBody");
+  const title = document.getElementById("currentQuizTitle");
+  const editBtn = document.getElementById("editQuizBtn");
+  const delBtn = document.getElementById("deleteQuizBtn");
+  const dlBtn = document.getElementById("downloadReviewBtn");
+  const updateBtn = document.getElementById("quizUpdateBtn");
+  const reloadBtn = document.getElementById("quizReloadBtn");
+  const newAttemptBtn = document.getElementById("newAttemptBtn");
+  const attemptSelect = document.getElementById("attemptSelect");
+
+  const hideAll = () => [editBtn, delBtn, dlBtn, updateBtn, reloadBtn, newAttemptBtn, attemptSelect].forEach(b => b.hidden = true);
+
+  if (!fs.connected) {
+    title.textContent = "—";
+    hideAll();
+    body.innerHTML = `<div class="connect-prompt">
+      <h3>Not connected</h3>
+      <p>Click <strong>Connect</strong> in the top bar and pick your <code>study-tool/</code> folder to load quizzes from disk.</p>
+    </div>`;
+    return;
+  }
+
+  if (!activeQuizId) {
+    title.textContent = "—";
+    hideAll();
+    body.innerHTML = `<div class="placeholder">Pick or create a quiz to begin.</div>`;
+    return;
+  }
+
+  const quiz = fs.quizzes.get(activeQuizId);
+  if (!quiz) { activeQuizId = null; renderQuizBody(); return; }
+  title.textContent = quiz.title;
+  editBtn.hidden = false;
+  delBtn.hidden = false;
+  dlBtn.hidden = false;
+  newAttemptBtn.hidden = false;
+
+  const attempts = fs.attempts.get(quiz.id) || [];
+  renderAttemptSelect();
+
+  body.innerHTML = "";
+  if (!quiz.questions || quiz.questions.length === 0) {
+    body.innerHTML = `<div class="empty-state">This quiz has no questions yet. Click Edit to add some.</div>`;
+    updateBtn.hidden = true;
+    reloadBtn.hidden = true;
+    return;
+  }
+
+  if (!activeSession) {
+    // No attempt selected — show a prompt to start one
+    body.innerHTML = `<div class="connect-prompt">
+      <h3>No attempts yet</h3>
+      <p>Click <strong>+ New attempt</strong> in the header to start.</p>
+    </div>`;
+    updateBtn.hidden = true;
+    reloadBtn.hidden = true;
+    return;
+  }
+
+  updateBtn.hidden = false;
+  reloadBtn.hidden = false;
+
+  quiz.questions.forEach((q, i) => body.appendChild(renderQuestion(quiz, q, i)));
+
+  // Post-attempt Q&A
+  const qaSection = document.createElement("div");
+  qaSection.className = "qa-section";
+  qaSection.innerHTML = `<div class="lesson-section-label">Post-attempt Q&amp;A</div>`;
+  if (activeSession.qa && activeSession.qa.length) {
+    activeSession.qa.forEach(item => {
+      const entry = document.createElement("div");
+      entry.className = "qa-entry";
+      entry.innerHTML = `<div class="qa-meta"></div><div class="qa-q"></div><div class="qa-a"></div>`;
+      entry.querySelector(".qa-meta").textContent = item.timestamp || "";
+      entry.querySelector(".qa-q").textContent = "Q: " + (item.q || "");
+      entry.querySelector(".qa-a").textContent = "A: " + (item.a || "");
+      qaSection.appendChild(entry);
+    });
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "qa-empty";
+    empty.textContent = "No Q&A yet. Update local copy, ask Claude in chat — answers get appended here when you Reload from local.";
+    qaSection.appendChild(empty);
+  }
+  body.appendChild(qaSection);
+
+  // Bottom action row
+  const footer = document.createElement("div");
+  footer.style.marginTop = "16px";
+  footer.style.display = "flex";
+  footer.style.gap = "8px";
+  footer.innerHTML = `<button id="sendToClaudeBtn">Send all answers to Claude</button>`;
+  body.appendChild(footer);
+  document.getElementById("sendToClaudeBtn").onclick = sendSessionToClaude;
+}
+function renderQuestion(quiz, q, i) {
+  const wrap = document.createElement("div");
+  wrap.className = "quiz-question";
+  let inner = `<div class="q-meta">Question ${i + 1} · ${q.type === "mc" ? "Multiple choice" : q.type === "text" ? "Text input" : "Code"}</div>`;
+  inner += `<div class="q-prompt"></div>`;
+  if (q.type === "mc") {
+    inner += `<div class="q-options">`;
+    (q.options || []).forEach((opt, oi) => {
+      inner += `<label class="q-option"><input type="radio" name="q${i}" value="${oi}"><span></span></label>`;
+    });
+    inner += `</div>`;
+  } else if (q.type === "text") {
+    inner += `<input type="text" data-input placeholder="Your answer">`;
+  } else if (q.type === "code") {
+    inner += `<textarea data-input rows="8" placeholder="# your code here"></textarea>`;
+  }
+  inner += `<div class="q-actions">
+    <button class="primary" data-act="submit">Submit</button>
+    <button data-act="reveal">Show answer</button>
+    <button class="ask-claude-btn" data-act="ask">Ask Claude →</button>
+    <button class="ask-claude-btn" data-act="flashcard">+ Flashcard</button>
+  </div>`;
+  inner += `<div class="q-answer" hidden></div>`;
+  inner += `<div class="q-rate" hidden>
+    <span>Self-rate:</span>
+    <div class="q-rate-buttons">
+      <button data-rate="1" title="Blank — no recall">1</button>
+      <button data-rate="2" title="Wrong / partial">2</button>
+      <button data-rate="3" title="Correct with effort">3</button>
+      <button data-rate="4" title="Recalled fast">4</button>
+      <button data-rate="5" title="Instant — locked in">5</button>
+    </div>
+    <span class="q-rate-scale">1 blank · 5 instant</span>
+  </div>`;
+  inner += `<div class="q-note" hidden>
+    <label>Note</label>
+    <textarea data-note placeholder="Optional — anything to remember about this one"></textarea>
+  </div>`;
+  inner += `<div class="q-result" hidden></div>`;
+  inner += `<div class="q-override" hidden></div>`;
+  wrap.innerHTML = inner;
+  wrap.querySelector(".q-prompt").textContent = q.prompt || "";
+
+  // Tab indents in the code editor instead of moving focus.
+  if (q.type === "code") enableTabIndent(wrap.querySelector("[data-input]"));
+
+  // Attach Pyodide runner for code questions
+  if (q.type === "code" && pyodideAvailable()) {
+    const ta = wrap.querySelector("[data-input]");
+    const insertBefore = wrap.querySelector(".q-actions");
+    const runnerHost = document.createElement("div");
+    insertBefore.parentNode.insertBefore(runnerHost, insertBefore);
+    attachCodeRunner(
+      runnerHost,
+      () => ta.value,
+      () => q.tests || [],
+      `quiz-${activeQuizId}-${i}`,
+      q.testSetup || ""
+    );
+  }
+
+  if (q.type === "mc") {
+    wrap.querySelectorAll(".q-option").forEach((labEl, oi) => {
+      labEl.querySelector("span").textContent = q.options[oi];
+      labEl.querySelector("input").addEventListener("change", () => {
+        wrap.querySelectorAll(".q-option").forEach(o => o.classList.remove("selected"));
+        labEl.classList.add("selected");
+      });
+    });
+  }
+  const prior = activeSession.responses[i];
+  if (prior !== null && prior !== undefined) {
+    if (q.type === "mc") {
+      const inputs = wrap.querySelectorAll('input[type="radio"]');
+      if (inputs[prior.value] !== undefined) {
+        inputs[prior.value].checked = true;
+        inputs[prior.value].closest(".q-option").classList.add("selected");
+      }
+    } else if (q.type === "text" || q.type === "code") {
+      wrap.querySelector("[data-input]").value = prior.value || "";
+    }
+    if (prior.selfRating) {
+      // Pre-select the rating button — but keep the row hidden until the answer is revealed
+      const rateRow = wrap.querySelector(".q-rate");
+      rateRow.querySelector(`[data-rate="${prior.selfRating}"]`).classList.add("selected");
+    }
+    if (prior.note) {
+      wrap.querySelector("[data-note]").value = prior.note;
+    }
+  } else if (q.type === "code" && q.starter) {
+    // No prior answer yet — seed the editor with the function stub to fill in.
+    wrap.querySelector("[data-input]").value = q.starter;
+  }
+
+  wrap.querySelector("[data-note]").addEventListener("blur", e => {
+    const noteVal = e.target.value;
+    if (!activeSession.responses[i]) {
+      activeSession.responses[i] = { type: q.type, value: null, correct: null, selfRating: null, note: noteVal };
+    } else {
+      activeSession.responses[i].note = noteVal;
+    }
+    saveState();
+  });
+
+  function getExpectedAnswerText() {
+    if (q.type === "mc") {
+      if (typeof q.correct === "number") return `${q.correct}: ${q.options[q.correct]}`;
+      return "(no correct option set)";
+    }
+    return q.answer || "(no reference answer set)";
+  }
+
+  wrap.querySelector('[data-act="reveal"]').addEventListener("click", () => {
+    const ans = wrap.querySelector(".q-answer");
+    const rate = wrap.querySelector(".q-rate");
+    const note = wrap.querySelector(".q-note");
+    const btn = wrap.querySelector('[data-act="reveal"]');
+    if (ans.hidden) {
+      if (!ans.innerHTML) {
+        ans.innerHTML = `<div class="q-answer-label">Answer</div>`;
+        const body = document.createElement("div");
+        body.textContent = getExpectedAnswerText();
+        ans.appendChild(body);
+        if (q.explanation) {
+          const whyLabel = document.createElement("div");
+          whyLabel.className = "q-answer-label spaced";
+          whyLabel.textContent = "Why";
+          ans.appendChild(whyLabel);
+          const why = document.createElement("div");
+          why.className = "q-why";
+          why.textContent = q.explanation;
+          ans.appendChild(why);
+        }
+        if (q.visual) {
+          const vis = document.createElement("pre");
+          vis.className = "q-visual";
+          vis.textContent = q.visual;
+          ans.appendChild(vis);
+        }
+      }
+      ans.hidden = false;
+      rate.hidden = false;
+      note.hidden = false;
+      btn.textContent = "Hide answer";
+    } else {
+      ans.hidden = true;
+      rate.hidden = true;
+      note.hidden = true;
+      btn.textContent = "Show answer";
+    }
+  });
+
+  wrap.querySelectorAll('.q-rate [data-rate]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      const rating = Number(btn.dataset.rate);
+      wrap.querySelectorAll('.q-rate [data-rate]').forEach(b => b.classList.toggle("selected", b === btn));
+      if (!activeSession.responses[i]) {
+        let value = null;
+        if (q.type === "mc") {
+          const chosen = wrap.querySelector('input[type="radio"]:checked');
+          value = chosen ? Number(chosen.value) : null;
+        } else {
+          const live = wrap.querySelector("[data-input]");
+          value = live ? live.value : null;
+        }
+        activeSession.responses[i] = { type: q.type, value, correct: null, selfRating: rating };
+      } else {
+        activeSession.responses[i].selfRating = rating;
+      }
+      saveState();
+    });
+  });
+  wrap.querySelector('[data-act="flashcard"]').addEventListener("click", () => {
+    // Build a self-contained back: the answer, a concise why, and the visual.
+    const answerText = q.type === "mc"
+      ? (typeof q.correct === "number" ? q.options[q.correct] : "")
+      : (q.answer || "");
+    const concise = q.cardBack || q.explanation || "";
+    let backVal = answerText;
+    if (concise) backVal += (backVal ? "\n\n" : "") + concise;
+    // Fence the ASCII visual so it renders in a left-aligned monospace box, separate from prose.
+    if (q.visual) backVal += (backVal ? "\n\n" : "") + "```\n" + q.visual + "\n```";
+    makeFlashcardFromSource(
+      { type: "quiz-question", quizId: activeQuizId, questionIdx: i },
+      { front: q.prompt || "", back: backVal },
+      q.concept || null
+    );
+  });
+
+  wrap.querySelector('[data-act="ask"]').addEventListener("click", () => {
+    const quiz2 = fs.quizzes.get(activeQuizId);
+    const lines = [
+      `Quiz: ${quiz2 ? quiz2.title : ""}`,
+      `Question ${i + 1} (${q.type === "mc" ? "multiple choice" : q.type === "text" ? "text" : "code"})`,
+      `Prompt: ${q.prompt}`
+    ];
+    if (q.type === "mc") {
+      lines.push("Options:");
+      (q.options || []).forEach((opt, oi) => lines.push(`  ${oi}: ${opt}${q.correct === oi ? "  [correct]" : ""}`));
+    } else if (q.answer) {
+      lines.push(`Expected: ${q.answer}`);
+    }
+    const r = activeSession.responses[i];
+    if (r === null || r === undefined) {
+      lines.push(`My answer: (not yet submitted)`);
+      const liveInput = wrap.querySelector("[data-input]");
+      if (liveInput && liveInput.value) {
+        lines.push(`Current draft:`);
+        lines.push((liveInput.value || "").split("\n").map(l => "  " + l).join("\n"));
+      }
+    } else if (q.type === "mc") {
+      lines.push(`My answer: ${q.options[r.value]}`);
+    } else {
+      lines.push(`My answer:`);
+      lines.push((r.value || "").split("\n").map(l => "  " + l).join("\n"));
+    }
+    openAskClaude(`quiz question`, lines);
+  });
+
+  // Auto-grade a submitted value. Returns true/false, or null when we can't judge
+  // (code questions, or text/MC with no reference answer).
+  function autoGrade(value) {
+    if (q.type === "mc") return typeof q.correct === "number" ? value === q.correct : null;
+    if (q.type === "text") return q.answer ? value.trim().toLowerCase() === String(q.answer).trim().toLowerCase() : null;
+    return null; // code — graded by running tests, not string match
+  }
+
+  const result = wrap.querySelector(".q-result");
+  const overrideWrap = wrap.querySelector(".q-override");
+
+  // Paint the result banner + (for text/code) the self-mark-correct toggle.
+  function showResult() {
+    const r = activeSession.responses[i];
+    if (!r) { result.hidden = true; overrideWrap.hidden = true; return; }
+    if (r.correct === true) {
+      result.className = "q-result correct";
+      result.textContent = r.override ? "Marked correct (self-graded)." : "Correct.";
+    } else if (r.correct === false) {
+      result.className = "q-result incorrect";
+      const ans = q.type === "mc" ? q.options[q.correct] : q.answer;
+      result.textContent = `Not quite. Expected: ${ans}`;
+    } else {
+      result.className = "q-result recorded";
+      result.textContent = "Recorded.";
+    }
+    result.hidden = false;
+
+    // Exact-match / no-grade is unreliable for text & code — let the user override.
+    if (q.type === "text" || q.type === "code") {
+      overrideWrap.hidden = false;
+      overrideWrap.innerHTML = "";
+      const btn = document.createElement("button");
+      btn.className = "q-override-btn" + (r.correct === true ? " active" : "");
+      btn.textContent = r.correct === true ? "✓ Marked correct — undo" : "Mark correct";
+      btn.onclick = () => {
+        if (r.correct === true) {
+          r.correct = autoGrade(r.value);   // revert to the auto verdict
+          delete r.override;
+        } else {
+          r.correct = true;
+          r.override = true;
+        }
+        saveState();
+        showResult();
+      };
+      overrideWrap.appendChild(btn);
+    } else {
+      overrideWrap.hidden = true;
+    }
+  }
+
+  // On load, if this question was already answered (e.g. reviewing a past attempt), show its result.
+  if (prior && (prior.correct !== null || (typeof prior.value === "number") || (typeof prior.value === "string" && prior.value.trim() !== ""))) {
+    showResult();
+  }
+
+  wrap.querySelector('[data-act="submit"]').addEventListener("click", () => {
+    let value;
+    if (q.type === "mc") {
+      const chosen = wrap.querySelector('input[type="radio"]:checked');
+      if (!chosen) { toast("Pick an option"); return; }
+      value = Number(chosen.value);
+    } else {
+      value = wrap.querySelector("[data-input]").value;
+    }
+    const existing = activeSession.responses[i];
+    activeSession.responses[i] = {
+      type: q.type,
+      value,
+      correct: autoGrade(value),
+      selfRating: existing ? existing.selfRating : null,
+      note: existing ? existing.note : undefined
+    };
+    saveState();
+    showResult();
+  });
+  return wrap;
+}
+// saveSession removed — replaced by Update local copy (file-based)
+
+document.getElementById("deleteQuizBtn").addEventListener("click", async () => {
+  if (!activeQuizId || !fs.connected) return;
+  const quiz = fs.quizzes.get(activeQuizId);
+  if (!quiz) return;
+  const attemptCount = (fs.attempts.get(activeQuizId) || []).length;
+  if (!confirm(`Delete quiz "${quiz.title}" and its ${attemptCount} attempt${attemptCount === 1 ? "" : "s"}? This removes the folder from disk.`)) return;
+  const ok = await fsm.deleteQuiz(activeQuizId);
+  if (ok) {
+    activeQuizId = null;
+    activeSession = null;
+    renderQuizzes();
+    renderQuizBody();
+    toast("Quiz deleted");
+  } else {
+    alert("Delete failed.");
+  }
+});
+document.getElementById("editQuizBtn").addEventListener("click", () => editQuiz(activeQuizId));
+document.getElementById("addQuizBtn").addEventListener("click", () => editQuiz(null));
+document.getElementById("downloadReviewBtn").addEventListener("click", downloadReviewPy);
+function editQuiz(id) {
+  if (!fs.connected) { toast("Connect to a study-tool folder first"); return; }
+  const editing = id ? fs.quizzes.get(id) : null;
+  const draft = editing
+    ? JSON.parse(JSON.stringify(editing))
+    : { id: "quiz-" + uid(), title: "", questions: [] };
+  modal(`
+    <h2>${editing ? "Edit quiz" : "New quiz"}</h2>
+    <div class="field"><label>Title</label><input id="eq-title"></div>
+    <div id="eq-questions"></div>
+    <div class="row" style="gap: 6px; margin-top: 8px;">
+      <button data-add="mc">+ Multiple choice</button>
+      <button data-add="text">+ Text</button>
+      <button data-add="code">+ Code</button>
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" data-act="cancel">Cancel</button>
+      <button class="primary" data-act="save">${editing ? "Save" : "Create"}</button>
+    </div>
+  `, root => {
+    const titleInput = root.querySelector("#eq-title");
+    titleInput.value = draft.title;
+    titleInput.addEventListener("input", e => { draft.title = e.target.value; });
+    const renderQs = () => {
+      const wrap = root.querySelector("#eq-questions");
+      wrap.innerHTML = "";
+      draft.questions.forEach((q, i) => {
+        const card = document.createElement("div");
+        card.className = "quiz-question";
+        card.style.padding = "12px";
+        let html = `<div class="q-meta">Q${i + 1} · ${q.type}</div>`;
+        html += `<div class="field"><label>Prompt</label><textarea data-bind="prompt" rows="2"></textarea></div>`;
+        if (q.type === "mc") {
+          html += `<div class="field"><label>Options (one per line)</label><textarea data-bind="options" rows="4"></textarea></div>`;
+          html += `<div class="field"><label>Correct index (0-based)</label><input data-bind="correct" type="number" min="0"></div>`;
+        } else if (q.type === "text") {
+          html += `<div class="field"><label>Expected answer (optional)</label><input data-bind="answer"></div>`;
+        } else if (q.type === "code") {
+          html += `<div class="field"><label>Reference answer (optional)</label><textarea data-bind="answer" rows="4"></textarea></div>`;
+        }
+        html += `<div class="row"><button data-act="del" class="danger ghost">Remove question</button></div>`;
+        card.innerHTML = html;
+        const bindings = card.querySelectorAll("[data-bind]");
+        bindings.forEach(b => {
+          const key = b.dataset.bind;
+          if (key === "options") b.value = (q.options || []).join("\n");
+          else b.value = q[key] ?? "";
+          b.addEventListener("input", () => {
+            if (key === "options") q.options = b.value.split("\n").map(s => s.trim()).filter(Boolean);
+            else if (key === "correct") q.correct = b.value === "" ? null : Number(b.value);
+            else q[key] = b.value;
+          });
+        });
+        card.querySelector('[data-act="del"]').onclick = () => {
+          draft.questions.splice(i, 1);
+          renderQs();
+        };
+        wrap.appendChild(card);
+      });
+    };
+    root.querySelectorAll("[data-add]").forEach(btn => {
+      btn.onclick = () => {
+        const type = btn.dataset.add;
+        const newQ = { type, prompt: "" };
+        if (type === "mc") { newQ.options = []; newQ.correct = null; }
+        if (type === "text") newQ.answer = "";
+        if (type === "code") newQ.answer = "";
+        draft.questions.push(newQ);
+        renderQs();
+      };
+    });
+    renderQs();
+    root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+    root.querySelector('[data-act="save"]').onclick = async () => {
+      if (!draft.title.trim()) { toast("Title required"); return; }
+      try {
+        if (editing) {
+          Object.assign(editing, draft);
+          await fsm.writeQuiz(editing);
+        } else {
+          fs.quizzes.set(draft.id, draft);
+          fs.attempts.set(draft.id, []);
+          await fsm.writeQuiz(draft);
+        }
+        activeQuizId = draft.id;
+        activeSession = null;
+        root.remove();
+        renderQuizzes();
+        renderQuizBody();
+        toast(editing ? "Quiz saved" : "Quiz created");
+      } catch (e) {
+        alert("Save failed: " + e.message);
+      }
+    };
+  });
+}
+
+/* ===== lessons (file-based) ===== */
+function getLessonsSorted() {
+  return [...fs.lessons.values()].sort((a, b) => {
+    const da = a.date || "";
+    const db = b.date || "";
+    return da.localeCompare(db);
+  });
+}
+
+function renderLessons() {
+  const list = document.getElementById("lessonsList");
+  list.innerHTML = "";
+  if (!fs.connected) {
+    list.innerHTML = `<div class="empty-state">Click <strong>Connect</strong> to load lessons from disk.</div>`;
+    return;
+  }
+  const lessons = getLessonsSorted();
+  if (lessons.length === 0) {
+    list.innerHTML = `<div class="empty-state">No lessons found in <code>lessons/</code>.</div>`;
+    return;
+  }
+  lessons.forEach(lesson => {
+    const li = document.createElement("li");
+    li.dataset.id = lesson.id;
+    li.classList.toggle("active", lesson.id === activeLessonId);
+    li.innerHTML = `<span class="name"></span><span class="count">${(lesson.exercises || []).length}</span>`;
+    li.querySelector(".name").textContent = lesson.title;
+    li.addEventListener("click", () => selectLesson(lesson.id));
+    list.appendChild(li);
+  });
+}
+
+function selectLesson(id) {
+  activeLessonId = id;
+  prefs.lastLessonId = id;
+  savePrefs();
+  renderLessons();
+  renderLessonBody();
+}
+
+// Render one teaching block. `collapsible` blocks hold sub-blocks inside a <details>
+// (collapsed by default — used for borderline-known syntax recaps and worked examples).
+function renderBodyBlock(block, idKey) {
+  if (block.type === "collapsible") {
+    const det = document.createElement("details");
+    det.className = "lesson-collapsible";
+    if (block.open) det.open = true;
+    const sum = document.createElement("summary");
+    sum.textContent = block.heading || "Show details";
+    det.appendChild(sum);
+    (block.blocks || []).forEach((sub, i) => {
+      det.appendChild(renderBodyBlock(sub, `${idKey}-${i}`));
+    });
+    return det;
+  }
+  const el = document.createElement("div");
+  el.className = `body-block ${block.type || "prose"}`;
+  if (block.heading) {
+    const hdr = document.createElement("div");
+    hdr.className = "body-block-header";
+    hdr.innerHTML = `<span class="heading"></span>`;
+    hdr.querySelector(".heading").textContent = block.heading;
+    el.appendChild(hdr);
+  }
+  const content = document.createElement("div");
+  content.textContent = block.content || "";
+  if (block.type === "code" || block.type === "diagram") content.style.whiteSpace = "pre";
+  el.appendChild(content);
+  // If this is runnable code, attach a Run button
+  if (block.type === "code" && block.runnable && pyodideAvailable()) {
+    attachCodeRunner(el, () => block.content, null, `lesson-body-${idKey}`);
+  }
+  return el;
+}
+
+function renderLessonBody() {
+  const body = document.getElementById("lessonBody");
+  const title = document.getElementById("currentLessonTitle");
+  const meta = document.getElementById("currentLessonMeta");
+  const updateBtn = document.getElementById("lessonUpdateBtn");
+  const reloadBtn = document.getElementById("lessonReloadBtn");
+
+  if (!fs.connected) {
+    title.textContent = "—";
+    meta.textContent = "";
+    updateBtn.hidden = true;
+    reloadBtn.hidden = true;
+    body.innerHTML = `<div class="connect-prompt">
+      <h3>Not connected</h3>
+      <p>Click <strong>Connect</strong> in the top bar and pick your <code>study-tool/</code> folder to load lessons from disk.</p>
+    </div>`;
+    return;
+  }
+
+  if (!activeLessonId) {
+    title.textContent = "—";
+    meta.textContent = "";
+    updateBtn.hidden = true;
+    reloadBtn.hidden = true;
+    body.innerHTML = `<div class="placeholder">Pick a lesson to review what you did.</div>`;
+    return;
+  }
+
+  const lesson = fs.lessons.get(activeLessonId);
+  if (!lesson) { activeLessonId = null; renderLessonBody(); return; }
+  updateBtn.hidden = false;
+  reloadBtn.hidden = false;
+
+  title.textContent = lesson.title;
+  const exerciseCount = (lesson.exercises || []).length;
+  meta.textContent = `${lesson.date || ""} · ${exerciseCount} item${exerciseCount === 1 ? "" : "s"}`;
+
+  body.innerHTML = "";
+
+  // Helper: build a section header with a "+ Flashcard" button (source-aware)
+  const makeSection = (labelText, sectionKey, prefill) => {
+    const sec = document.createElement("div");
+    sec.className = "lesson-section";
+    const header = document.createElement("div");
+    header.className = "section-header";
+    header.innerHTML = `<div class="lesson-section-label"></div><button class="flashcard-from-btn" title="Make a flashcard from this section">+ Flashcard</button>`;
+    header.querySelector(".lesson-section-label").textContent = labelText;
+    header.querySelector(".flashcard-from-btn").onclick = () => makeFlashcardFromSource(
+      { type: "lesson-section", lessonId: lesson.id, section: sectionKey },
+      prefill,
+      (lesson.sectionConcepts && lesson.sectionConcepts[sectionKey]) || null
+    );
+    sec.appendChild(header);
+    return sec;
+  };
+
+  // Summary
+  if (lesson.summary) {
+    const sec = makeSection("Summary", "summary", {
+      front: `${lesson.title} — Summary`,
+      back: lesson.summary
+    });
+    const body2 = document.createElement("div");
+    body2.className = "lesson-summary";
+    body2.textContent = lesson.summary;
+    sec.appendChild(body2);
+    body.appendChild(sec);
+  }
+
+  // Session notes
+  if (lesson.sessionNotes) {
+    const sec = makeSection("Session notes", "sessionNotes", {
+      front: `${lesson.title} — Session notes`,
+      back: lesson.sessionNotes
+    });
+    const body2 = document.createElement("div");
+    body2.className = "session-notes";
+    body2.textContent = lesson.sessionNotes;
+    sec.appendChild(body2);
+    body.appendChild(sec);
+  }
+
+  // Intro / key concepts
+  if (lesson.intro) {
+    const sec = makeSection("Key concepts", "intro", {
+      front: `${lesson.title} — Key concepts`,
+      back: lesson.intro
+    });
+    const body2 = document.createElement("div");
+    body2.className = "lesson-intro";
+    body2.textContent = lesson.intro;
+    sec.appendChild(body2);
+    body.appendChild(sec);
+  }
+
+  // Body — long-form teaching blocks (prose / code / diagram / collapsible)
+  if (Array.isArray(lesson.body) && lesson.body.length > 0) {
+    const sec = document.createElement("div");
+    sec.className = "lesson-section";
+    sec.innerHTML = `<div class="lesson-section-label">Teaching content</div>`;
+    lesson.body.forEach((block, blockIdx) => {
+      sec.appendChild(renderBodyBlock(block, `${lesson.id}-${blockIdx}`));
+    });
+    body.appendChild(sec);
+  }
+
+  // Exercises
+  if (exerciseCount > 0) {
+    const sec = document.createElement("div");
+    sec.className = "lesson-section";
+    const header = document.createElement("div");
+    header.className = "section-header";
+    header.innerHTML = `<div class="lesson-section-label">Exercises</div>`;
+    sec.appendChild(header);
+    lesson.exercises.forEach(ex => {
+      const card = document.createElement("div");
+      card.className = "exercise";
+      const exHeader = document.createElement("div");
+      exHeader.className = "exercise-header";
+      exHeader.innerHTML = `<h3></h3><button class="flashcard-from-btn" title="Make a flashcard from this exercise">+ Flashcard</button>`;
+      exHeader.querySelector("h3").textContent = ex.title || ex.id;
+      exHeader.querySelector(".flashcard-from-btn").onclick = () => makeFlashcardFromSource(
+        { type: "lesson-exercise", lessonId: lesson.id, exerciseId: ex.id },
+        {
+          front: ex.title || ex.prompt || "",
+          back: ex.critique || ex.prompt || ""
+        },
+        ex.concept || null
+      );
+      card.appendChild(exHeader);
+
+      if (ex.prompt) {
+        const block = document.createElement("div");
+        block.className = "exercise-block";
+        block.innerHTML = `<div class="block-label">Prompt</div><div class="block-body prompt"></div>`;
+        block.querySelector(".block-body").textContent = ex.prompt;
+        card.appendChild(block);
+      }
+      if (ex.userAnswer !== undefined && ex.userAnswer !== null) {
+        const block = document.createElement("div");
+        block.className = "exercise-block";
+        const rows = Math.max(3, (ex.userAnswer || "").split("\n").length);
+        block.innerHTML = `<div class="block-label">My answer</div><textarea class="block-body answer" rows="${rows}"></textarea>`;
+        const ta = block.querySelector("textarea");
+        ta.value = ex.userAnswer || "";
+        ta.addEventListener("blur", () => {
+          if (ta.value !== ex.userAnswer) {
+            ex.userAnswer = ta.value;
+          }
+        });
+        card.appendChild(block);
+        // Attach Pyodide runner if this exercise has runnable code
+        const hasCode = ex.runnable !== false && /^[\s]*(def|class|import|from|for|while|if|print|return|[a-zA-Z_]\w*\s*=)/m.test(ex.userAnswer || "");
+        const hasTests = Array.isArray(ex.tests) && ex.tests.length > 0;
+        if (hasCode || hasTests) enableTabIndent(ta);
+        if ((hasCode || hasTests) && pyodideAvailable()) {
+          attachCodeRunner(
+            block,
+            () => ta.value,
+            () => ex.tests || [],
+            `ex-${lesson.id}-${ex.id}`,
+            lesson.testSetup || ""
+          );
+        }
+      }
+      if (ex.critique) {
+        const block = document.createElement("div");
+        block.className = "exercise-block";
+        block.innerHTML = `<div class="block-label">Notes / critique</div><div class="block-body critique"></div>`;
+        block.querySelector(".block-body").textContent = ex.critique;
+        card.appendChild(block);
+      }
+      sec.appendChild(card);
+    });
+    body.appendChild(sec);
+  }
+
+  // Review items added from this session
+  if (lesson.reviewItemsAdded && lesson.reviewItemsAdded.length) {
+    const sec = document.createElement("div");
+    sec.className = "lesson-section";
+    sec.innerHTML = `
+      <div class="lesson-section-label">Review queue items added</div>
+      <div class="review-items-added"><ul></ul></div>
+    `;
+    const ul = sec.querySelector("ul");
+    lesson.reviewItemsAdded.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      ul.appendChild(li);
+    });
+    body.appendChild(sec);
+  }
+
+  // Post-session Q&A (Claude appends here)
+  const qaSection = document.createElement("div");
+  qaSection.className = "qa-section";
+  qaSection.innerHTML = `<div class="lesson-section-label">Post-session Q&amp;A</div>`;
+  if (lesson.qa && lesson.qa.length) {
+    lesson.qa.forEach(item => {
+      const entry = document.createElement("div");
+      entry.className = "qa-entry";
+      entry.innerHTML = `<div class="qa-meta"></div><div class="qa-q"></div><div class="qa-a"></div>`;
+      entry.querySelector(".qa-meta").textContent = item.timestamp || "";
+      entry.querySelector(".qa-q").textContent = "Q: " + (item.q || "");
+      entry.querySelector(".qa-a").textContent = "A: " + (item.a || "");
+      qaSection.appendChild(entry);
+    });
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "qa-empty";
+    empty.textContent = "No Q&A yet. Save the lesson, then ask Claude in chat — answers get appended here when you Reload from local.";
+    qaSection.appendChild(empty);
+  }
+  body.appendChild(qaSection);
+}
+
+/* ===== connect + file sync handlers ===== */
+
+document.getElementById("connectBtn").addEventListener("click", async () => {
+  if (fs.connected) {
+    if (!confirm(`Currently connected to "${fs.dirHandle?.name}". Pick a different folder?`)) return;
+  }
+  const ok = await fsm.connect();
+  if (ok) {
+    // After connect, refresh all views
+    renderLessons();
+    renderLessonBody();
+    renderQuizzes();
+    renderQuizBody();
+  }
+});
+
+document.getElementById("lessonUpdateBtn").addEventListener("click", async () => {
+  if (!activeLessonId || !fs.connected) return;
+  const lesson = fs.lessons.get(activeLessonId);
+  if (!lesson) return;
+  try {
+    await fsm.writeLesson(lesson);
+    toast(`Saved ${fsm.lessonFilename(lesson)}`);
+  } catch (e) {
+    alert("Save failed: " + e.message);
+  }
+});
+
+document.getElementById("lessonReloadBtn").addEventListener("click", async () => {
+  if (!activeLessonId || !fs.connected) return;
+  if (!confirm("Reload from disk? Unsaved edits will be lost.")) return;
+  const data = await fsm.reloadLesson(activeLessonId);
+  if (data) {
+    renderLessonBody();
+    toast("Reloaded from disk");
+  } else {
+    alert("Reload failed — file may have been moved or renamed.");
+  }
+});
+
+/* ===== quiz file sync handlers ===== */
+
+document.getElementById("quizUpdateBtn").addEventListener("click", async () => {
+  if (!activeQuizId || !activeSession || !fs.connected) return;
+  try {
+    await fsm.writeAttempt(activeQuizId, activeSession);
+    toast(`Saved ${activeSession._filename}`);
+    renderAttemptSelect();
+  } catch (e) {
+    alert("Save failed: " + e.message);
+  }
+});
+
+document.getElementById("quizReloadBtn").addEventListener("click", async () => {
+  if (!activeQuizId || !activeSession || !fs.connected) return;
+  if (!confirm("Reload from disk? Unsaved edits will be lost.")) return;
+  const data = await fsm.reloadAttempt(activeQuizId, activeSession.id);
+  if (data) {
+    activeSession = data;
+    renderQuizBody();
+    toast("Reloaded from disk");
+  }
+});
+
+document.getElementById("newAttemptBtn").addEventListener("click", async () => {
+  if (!activeQuizId || !fs.connected) return;
+  const quiz = fs.quizzes.get(activeQuizId);
+  if (!quiz) return;
+  const newAttempt = {
+    id: uid(),
+    quizId: quiz.id,
+    timestamp: new Date().toISOString(),
+    responses: (quiz.questions || []).map(() => null),
+    qa: []
+  };
+  try {
+    await fsm.writeAttempt(quiz.id, newAttempt);
+    const arr = fs.attempts.get(quiz.id) || [];
+    arr.push(newAttempt);
+    fs.attempts.set(quiz.id, arr);
+    activeSession = newAttempt;
+    renderQuizBody();
+    toast("New attempt started");
+  } catch (e) { alert("Could not create attempt: " + e.message); }
+});
+
+document.getElementById("attemptSelect").addEventListener("change", e => {
+  const val = e.target.value;
+  if (val === "__new__") {
+    document.getElementById("newAttemptBtn").click();
+    return;
+  }
+  const attempts = fs.attempts.get(activeQuizId) || [];
+  const att = attempts.find(a => a.id === val);
+  if (att) {
+    activeSession = att;
+    renderQuizBody();
+  }
+});
+
+function renderAttemptSelect() {
+  const sel = document.getElementById("attemptSelect");
+  if (!activeQuizId || !fs.connected) { sel.hidden = true; return; }
+  const attempts = fs.attempts.get(activeQuizId) || [];
+  sel.innerHTML = "";
+  if (attempts.length === 0) {
+    sel.hidden = true;
+    return;
+  }
+  attempts.forEach((a, i) => {
+    const opt = document.createElement("option");
+    opt.value = a.id;
+    const dateStr = (a.timestamp || "").slice(0, 10);
+    opt.textContent = `Attempt ${i + 1} (${dateStr})`;
+    if (activeSession && activeSession.id === a.id) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.hidden = false;
+}
+
+/* ===== export / import ===== */
+document.getElementById("exportBtn").addEventListener("click", () => {
+  // Only flashcard data goes through export now; lessons/quizzes live in files.
+  const out = {
+    version: 1,
+    categories: state.categories || [],
+    cards: state.cards || [],
+    reviewQueue: state.reviewQueue || []
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `flashcards-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("Flashcards exported");
+});
+document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+// Apply a parsed import in one of two modes:
+//   "append"  — merge by id (keep existing, update matches, add new; union review queue)
+//   "replace" — wipe the deck and use only the file's contents
+function applyImport(data, mode) {
+  const hasCats = Array.isArray(data.categories);
+  const hasCards = Array.isArray(data.cards);
+  if (mode === "replace") {
+    if (hasCats) state.categories = data.categories;
+    if (hasCards) state.cards = data.cards;
+    state.reviewQueue = Array.isArray(data.reviewQueue) ? data.reviewQueue : [];
+  } else {
+    if (hasCats) {
+      const byId = new Map((state.categories || []).map(c => [c.id, c]));
+      data.categories.forEach(c => byId.set(c.id, c));
+      state.categories = Array.from(byId.values());
+    }
+    if (hasCards) {
+      const byId = new Map((state.cards || []).map(c => [c.id, c]));
+      data.cards.forEach(c => byId.set(c.id, c));
+      state.cards = Array.from(byId.values());
+    }
+    if (Array.isArray(data.reviewQueue)) {
+      const q = state.reviewQueue || [];
+      data.reviewQueue.forEach(id => { if (!q.includes(id)) q.push(id); });
+      state.reviewQueue = q;
+    }
+  }
+  saveState();
+  activeCategoryId = null;
+  cardFlippedState = {};
+  bootstrap();
+  toast(mode === "replace" ? "Deck replaced" : "Imported");
+}
+
+document.getElementById("importFile").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const ignored = [];
+      if (Array.isArray(data.quizzes)) ignored.push("quizzes");
+      if (Array.isArray(data.lessons)) ignored.push("lessons");
+      if (Array.isArray(data.sessions)) ignored.push("sessions");
+      const hasCats = Array.isArray(data.categories);
+      const hasCards = Array.isArray(data.cards);
+      if (!hasCats && !hasCards) {
+        alert(ignored.length
+          ? `This file only contains ${ignored.join(", ")}. Those are now file-based — connect to a study-tool folder instead.`
+          : "Nothing recognizable in this file.");
+        return;
+      }
+
+      const cardIds = new Set((state.cards || []).map(c => c.id));
+      const inCards = hasCards ? data.cards.length : 0;
+      const inCats = hasCats ? data.categories.length : 0;
+      const newCards = hasCards ? data.cards.filter(c => !cardIds.has(c.id)).length : 0;
+      const updCards = inCards - newCards;
+      const haveCards = (state.cards || []).length;
+      const haveCats = (state.categories || []).length;
+      const fileBits = [];
+      if (hasCards) fileBits.push(`${inCards} card${inCards === 1 ? "" : "s"}`);
+      if (hasCats) fileBits.push(`${inCats} categor${inCats === 1 ? "y" : "ies"}`);
+      const fileSummary = fileBits.join(" · ");
+      const ignoredNote = ignored.length
+        ? `<p style="font-size:12px;color:var(--text-dim);margin:0 0 10px;">Ignored: ${ignored.join(", ")} — those are file-based now.</p>` : "";
+
+      modal(`
+        <h2>Import flashcards</h2>
+        <p style="font-size:13px;color:var(--text-muted);margin:0 0 10px;">
+          This file contains <strong>${fileSummary}</strong>. You currently have <strong>${haveCards} cards</strong> in ${haveCats} categories.
+        </p>
+        ${ignoredNote}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;font-size:13px;">
+          <div style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);"><strong>Append / merge</strong> — keep your deck; add ${newCards} new card${newCards === 1 ? "" : "s"}${updCards ? `, update ${updCards} matching` : ""}.</div>
+          <div style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);"><strong>Replace</strong> — delete your current deck and use only this file.</div>
+        </div>
+        <div class="modal-actions" style="flex-wrap:wrap;gap:6px;">
+          <button class="ghost" data-act="cancel">Cancel</button>
+          <button class="danger" data-act="replace">Replace…</button>
+          <button class="primary" data-act="append">Append / merge</button>
+        </div>
+      `, root => {
+        root.querySelector('[data-act="cancel"]').onclick = () => root.remove();
+        root.querySelector('[data-act="append"]').onclick = () => { root.remove(); applyImport(data, "append"); };
+        root.querySelector('[data-act="replace"]').onclick = () => {
+          root.remove();
+          modal(`
+            <h2>Replace entire deck?</h2>
+            <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px;">
+              This permanently deletes your existing <strong>${haveCards} cards</strong> and <strong>${haveCats} categories</strong>, replacing them with this file's ${fileSummary}. <strong>This cannot be undone.</strong>
+            </p>
+            <div class="modal-actions">
+              <button class="ghost" data-act="cancel">Cancel</button>
+              <button class="danger" data-act="confirm">Replace everything</button>
+            </div>
+          `, root2 => {
+            root2.querySelector('[data-act="cancel"]').onclick = () => root2.remove();
+            root2.querySelector('[data-act="confirm"]').onclick = () => { root2.remove(); applyImport(data, "replace"); };
+          });
+        };
+      });
+    } catch (err) {
+      alert("Failed to import: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+/* ===== init ===== */
+function applyDeviceCapabilities() {
+  // FSA requires a Chromium-based engine. iOS browsers (including "Chrome on iPhone")
+  // are forced to use WebKit, which lacks the API. Detect by feature, not user agent.
+  const hasFSA = typeof window.showDirectoryPicker === "function";
+  if (hasFSA) return;
+  // Phone / unsupported browser → flashcards-only mode
+  document.querySelector('.tab[data-tab="quiz"]').hidden = true;
+  document.querySelector('.tab[data-tab="lessons"]').hidden = true;
+  document.getElementById("connectBtn").hidden = true;
+  // Force cards tab regardless of stored pref
+  prefs.lastTab = "cards";
+  // Add a small explanatory banner
+  const banner = document.createElement("div");
+  banner.className = "fc-only-banner";
+  banner.textContent = "Flashcards-only mode — this browser doesn't support file access. Use Chrome on desktop for lessons and quizzes.";
+  document.body.insertBefore(banner, document.querySelector(".topbar").nextSibling);
+}
+
+async function bootstrap() {
+  // Run any pending data migrations
+  migrateCardSourceRefs();
+
+  // Strip quiz/lessons UI on browsers that can't reach the file system
+  applyDeviceCapabilities();
+
+  // Restore tab
+  const validTabs = ["cards", "quiz", "lessons", "plan"];
+  const tab = validTabs.includes(prefs.lastTab) ? prefs.lastTab : "cards";
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === tab + "View"));
+  renderPlan();
+
+  // Pick active category: pinned > lastCategory > first. Queue is special.
+  const cats = getCategorySorted();
+  if (prefs.pinnedCategoryId === "__queue__") {
+    activeCategoryId = "__queue__";
+  } else if (prefs.pinnedCategoryId && cats.find(c => c.id === prefs.pinnedCategoryId)) {
+    activeCategoryId = prefs.pinnedCategoryId;
+  } else if (prefs.lastCategoryId === "__queue__") {
+    activeCategoryId = "__queue__";
+  } else if (prefs.lastCategoryId && cats.find(c => c.id === prefs.lastCategoryId)) {
+    activeCategoryId = prefs.lastCategoryId;
+  } else if (cats.length > 0) {
+    activeCategoryId = cats[0].id;
+  }
+
+  // Try silent reconnect to study-tool folder
+  await fsm.tryReconnect();
+  updateConnectionUI();
+
+  // Now that lessons/quizzes may have loaded from disk, pick defaults
+  const quizzes = getQuizzesSorted();
+  if (prefs.lastQuizId && quizzes.find(q => q.id === prefs.lastQuizId)) {
+    activeQuizId = prefs.lastQuizId;
+  } else if (quizzes.length > 0) {
+    activeQuizId = quizzes[0].id;
+  }
+  // Default attempt = latest
+  if (activeQuizId) {
+    const attempts = fs.attempts.get(activeQuizId) || [];
+    activeSession = attempts.length > 0 ? attempts[attempts.length - 1] : null;
+  }
+
+  const lessons = getLessonsSorted();
+  if (prefs.lastLessonId && lessons.find(l => l.id === prefs.lastLessonId)) {
+    activeLessonId = prefs.lastLessonId;
+  } else if (lessons.length > 0) {
+    activeLessonId = lessons[lessons.length - 1].id;
+  }
+
+  renderCategories();
+  renderCardsBody();
+  renderQuizzes();
+  renderQuizBody();
+  renderLessons();
+  renderLessonBody();
+}
+bootstrap();
+</script>
+</body>
+</html>

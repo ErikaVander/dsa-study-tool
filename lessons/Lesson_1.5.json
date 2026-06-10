@@ -1,0 +1,147 @@
+{
+  "id": "lesson-1.5",
+  "title": "1.5 Stacks & Queues",
+  "date": "2026-06-02",
+  "summary": "You already know the concept; the gap is Python. New tools: authoring your own class (__init__, self, methods), list as a stack (append / pop() / [-1]), and collections.deque as a queue (append / popleft() / [0]). Worked solutions for the Stack and Queue classes are in collapsed sections — study, close, reproduce. valid_parentheses is a real algorithm rep.",
+  "sessionNotes": "Reformatted to syntax-first per user feedback: concept ≈ zero (collapsed), body is the Python toolkit aimed at the exercises, each with how + why. Full worked solutions live in collapsed sections for the study→close→reproduce method. E2 left as genuine problem-solving (no solution given). Scoped to exclude already-documented syntax. RESULT (Session 10, 2026-06-03, re-done after the originals were lost): all 3 pass — E1 Stack & E3 Queue reproduced cleanly from the worked examples; E2 valid_parentheses (the prior genuine failure) solved independently and correctly, both edge guards handled, using match/case. The study→close→reproduce format worked.",
+  "intro": "You know stacks & queues already — the only real gap is Python: writing your OWN class, and knowing which list/deque method does what. This lesson is that toolkit. Concept refresher is collapsed below; open it only if you want it.",
+  "sectionConcepts": {
+    "intro": "stack-vs-queue-discipline"
+  },
+  "body": [
+    {
+      "type": "collapsible",
+      "heading": "Concept refresher — LIFO / FIFO (you've got this; open if you want)",
+      "open": false,
+      "blocks": [
+        {
+          "type": "prose",
+          "content": "STACK = LIFO: add and remove at ONE end (the top). QUEUE = FIFO: add at the back, remove from the front. Use a plain list for a stack. Use collections.deque for a queue, because a list's pop(0) shifts every element left → O(n). Trigger: nesting / undo → stack; arrival-order / BFS → queue."
+        }
+      ]
+    },
+    {
+      "type": "prose",
+      "heading": "What's actually new here: writing your own class",
+      "content": "You've USED a class (ListNode) but not authored one with methods. Three things to know:\n\n• __init__(self) is the setup method — it runs once when you call Stack(). Put the object's starting state here.\n• self means \"this particular object.\" Every method takes it as the first parameter, and you never pass it yourself: s.push(3) automatically becomes push(s, 3).\n• self._items stores state ON the object. The leading underscore is just a convention meaning \"internal — don't poke at it from outside.\""
+    },
+    {
+      "type": "code",
+      "heading": "Class skeleton (the shape every method follows)",
+      "runnable": false,
+      "content": "class Stack:\n    def __init__(self):        # setup, runs once at Stack()\n        self._items = []       # this object's own storage\n\n    def push(self, val):       # methods take self FIRST\n        self._items.append(val)  # reach state through self._items"
+    },
+    {
+      "type": "diagram",
+      "heading": "Tools for E1 — a list IS a stack (all O(1))",
+      "content": "  push     ->  self._items.append(val)\n  pop      ->  return self._items.pop()    # no arg = remove+return LAST\n  peek     ->  return self._items[-1]      # last item, no removal\n  is_empty ->  return not self._items      # an empty list is falsy\n\n  Why the end is cheap: the last slot of an array needs no shifting -> O(1)."
+    },
+    {
+      "type": "collapsible",
+      "heading": "E1 worked example — full Stack (study it, then CLOSE this and write it yourself)",
+      "open": false,
+      "blocks": [
+        {
+          "type": "prose",
+          "content": "Read each line until it makes sense, then collapse this section and reproduce it from memory in Exercise 1 below. Peeking-while-typing doesn't stick — the reconstruction is where it sticks."
+        },
+        {
+          "type": "code",
+          "runnable": false,
+          "content": "class Stack:\n    def __init__(self):\n        self._items = []\n\n    def push(self, val):\n        self._items.append(val)\n\n    def pop(self):\n        return self._items.pop()\n\n    def peek(self):\n        return self._items[-1]\n\n    def is_empty(self):\n        return not self._items"
+        }
+      ]
+    },
+    {
+      "type": "diagram",
+      "heading": "Tools for E3 — a deque IS a queue (all O(1))",
+      "content": "  enqueue  ->  self._items.append(val)\n  dequeue  ->  return self._items.popleft()   # remove+return the FRONT\n  peek     ->  return self._items[0]          # front item, no removal\n  is_empty ->  return not self._items\n\n  Why deque, not a list: list.pop(0) shifts every element left -> O(n) each,\n  so draining n items is O(n^2). deque is O(1) at BOTH ends. (Set it up with\n  self._items = deque() in __init__.)"
+    },
+    {
+      "type": "collapsible",
+      "heading": "E3 worked example — full Queue (study, close, reproduce)",
+      "open": false,
+      "blocks": [
+        {
+          "type": "prose",
+          "content": "Same drill: understand it, collapse it, then write Exercise 3 from memory."
+        },
+        {
+          "type": "code",
+          "runnable": false,
+          "content": "from collections import deque\n\nclass Queue:\n    def __init__(self):\n        self._items = deque()\n\n    def enqueue(self, val):\n        self._items.append(val)\n\n    def dequeue(self):\n        return self._items.popleft()\n\n    def peek(self):\n        return self._items[0]\n\n    def is_empty(self):\n        return not self._items"
+        }
+      ]
+    },
+    {
+      "type": "prose",
+      "heading": "E2 is a real rep — no worked solution given",
+      "content": "valid_parentheses is genuine problem-solving, so there's no answer to study — that's the point. Syntax you might reach for: a dict pairs = {')':'(', ']':'[', '}':'{'}, a membership test like ch in '([{', and a list as a stack. The three decisions inside the loop:\n\n  1) ch is an opener  -> push it.\n  2) ch is a closer   -> invalid if the stack is empty OR the popped top doesn't match:\n                         if not stack or stack.pop() != pairs[ch]: return False\n  3) after the loop   -> valid only if nothing is left open:  return not stack\n\nThe empty-stack guard in (2) is the piece people miss — e.g. ']' arriving with an empty stack."
+    }
+  ],
+  "testSetup": "from collections import deque\n",
+  "exercises": [
+    {
+      "id": "1.5-e1",
+      "title": "E1 — Stack class (reproduce from the worked example)",
+      "prompt": "Implement Stack with push(val), pop() (remove+return top), peek() (top without removing), is_empty() → bool, every op O(1). Study the worked example above, collapse it, then write this from memory. Run tests when done.",
+      "userAnswer": "",
+      "critique": "Correct — all 3 tests pass, and you reproduced it cleanly from memory (exactly the point of the worked-example → close → rebuild method). Only difference from the model: is_empty uses `len(self._items) == 0`, which is 100% correct. The more Pythonic form is `return not self._items` (an empty list is falsy) — both read the same; worth keeping in your back pocket. Solid.",
+      "concept": "stack-list-impl",
+      "tests": [
+        "s = Stack()\nassert s.is_empty() is True",
+        "s = Stack()\ns.push(1)\ns.push(2)\ns.push(3)\nassert s.is_empty() is False\nassert s.peek() == 3",
+        "s = Stack()\ns.push(1)\ns.push(2)\ns.push(3)\nassert s.pop() == 3\nassert s.pop() == 2\nassert s.peek() == 1\nassert s.pop() == 1\nassert s.is_empty() is True"
+      ]
+    },
+    {
+      "id": "1.5-e2",
+      "title": "E2 — valid_parentheses (real algorithm rep)",
+      "prompt": "Return True if every bracket in s (only ()[]{}) is closed by the matching type in the right order. '()[]{}'→True, '([)]'→False, ''→True. Use the three decisions from the lesson; no worked solution provided on purpose.",
+      "userAnswer": "",
+      "critique": "This was the one that mattered — last time it was a genuine blank, and this time you nailed it independently. All 8 tests pass, including BOTH edge guards: empty stack on a closer (']' with nothing pushed → False) and leftover openers at the end ('(' → False). The logic is correct and very readable. Two notes: (1) match/case works fine here (Python 3.10+); for matching a single value it's effectively an if/elif, so the more common idiom is `if ch in '([{': ... elif ch in ')]}': ...` and it doesn't depend on 3.10. (2) Optional compaction: the whole closer branch collapses to `if not stack or stack.pop() != pairs[ch]: return False`. Your explicit version is arguably clearer for an interview — keep it if you prefer it. Excellent problem-solving rep.",
+      "concept": "valid-parentheses-pattern",
+      "tests": [
+        "assert valid_parentheses('()') is True",
+        "assert valid_parentheses('()[]{}') is True",
+        "assert valid_parentheses('(]') is False",
+        "assert valid_parentheses('([)]') is False",
+        "assert valid_parentheses('{[]}') is True",
+        "assert valid_parentheses('') is True",
+        "assert valid_parentheses('(') is False",
+        "assert valid_parentheses(']') is False"
+      ]
+    },
+    {
+      "id": "1.5-e3",
+      "title": "E3 — Queue class (reproduce from the worked example)",
+      "prompt": "Implement Queue with enqueue(val) (back), dequeue() (remove+return FRONT), peek() (front), is_empty(), every op O(1). Study the worked example, collapse it, then write from memory. deque is imported for you.",
+      "userAnswer": "",
+      "critique": "Correct — all 3 tests pass, reproduced cleanly. You clearly internalized the list-vs-deque split: append to enqueue, popleft to dequeue, O(1) at both ends (a plain list would be O(n) per dequeue because pop(0) shifts everything). Same minor Pythonic note as E1: `return not self._items` reads a touch cleaner than `len(...) == 0`. Otherwise textbook.",
+      "concept": "queue-deque",
+      "tests": [
+        "q = Queue()\nassert q.is_empty() is True",
+        "q = Queue()\nq.enqueue('A')\nq.enqueue('B')\nq.enqueue('C')\nassert q.is_empty() is False\nassert q.peek() == 'A'",
+        "q = Queue()\nq.enqueue('A')\nq.enqueue('B')\nq.enqueue('C')\nassert q.dequeue() == 'A'\nassert q.dequeue() == 'B'\nassert q.peek() == 'C'\nassert q.dequeue() == 'C'\nassert q.is_empty() is True"
+      ]
+    }
+  ],
+  "reviewItemsAdded": [
+    "Authoring a class: __init__(self) sets up state; every method takes self first; s.push(3) → push(s, 3)",
+    "list as a stack: append (push) / pop() (pop) / [-1] (peek) / not lst (is_empty)",
+    "deque as a queue: append (enqueue) / popleft() (dequeue) / [0] (peek); list pop(0) is O(n)",
+    "valid_parentheses: empty-stack guard on a closer (if not stack or stack.pop() != pairs[ch])"
+  ],
+  "qa": [
+    {
+      "timestamp": "2026-06-03T11:58",
+      "q": "What does `return not self._items` mean, and what is 'falsy'?",
+      "a": "Falsy = values Python treats as False in a boolean context (if / while / not / and / or). The falsy set: False, None, 0, 0.0, '' (empty string), and empty containers [], {}, set(), (). Everything else is truthy; for containers the rule of thumb is empty = falsy, non-empty = truthy. `not` flips truthiness into a real bool: not(falsy) = True, not(truthy) = False. So `return not self._items` asks 'is this list empty?' — empty list → falsy → not → True; list with items → truthy → not → False. Plain pseudocode: return True if the list has no items, else False. Identical result to `len(self._items) == 0`, just leaning on the container's own truthiness instead of counting. GOTCHA: truthiness lumps empty, 0, and None together, so only use `not x` when empty/zero/missing should ALL count as false. For a counter where 0 is a valid value, `if not count:` would wrongly fire on zero — use `== 0` or `is None` there (same family as the `is None` review item)."
+    },
+    {
+      "timestamp": "2026-06-03T11:58",
+      "q": "What's Python's equivalent of a switch statement? (came up from the E2 solution)",
+      "a": "match / case (Python 3.10+). Multiple values share one branch via the or-pattern: `case '(' | '[' | '{':`. For matching a single simple value it's effectively an if/elif chain, so `if ch in '([{': ... elif ch in ')]}': ...` is the more common idiom and avoids the 3.10 dependency. Candidate for a flashcard under a new Python-syntax category (concept: python-match-case)."
+    }
+  ]
+}
