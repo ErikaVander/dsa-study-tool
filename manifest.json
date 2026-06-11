@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "lessons": [
+    "lessons/Lesson_1.1.json",
+    "lessons/Lesson_1.2.json",
+    "lessons/Lesson_1.3.5.json",
+    "lessons/Lesson_1.3.json",
+    "lessons/Lesson_1.4.json",
+    "lessons/Lesson_1.5.json"
+  ],
+  "quizzes": [
+    "quizzes/bigo-recognition/definition.json",
+    "quizzes/breadth-review/definition.json",
+    "quizzes/s10-review/definition.json",
+    "quizzes/weak-spots/definition.json"
+  ],
+  "flashcardDecks": [
+    "flashcards-fenced-2026-05-23.json"
+  ]
+}

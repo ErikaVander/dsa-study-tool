@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Study</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DSA Study</title>
+<meta name="description" content="Free DSA interview-prep study tool — lessons, quizzes, spaced-repetition flashcards, and in-browser Python.">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DSA Study">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   [hidden] { display: none !important; }
@@ -982,6 +990,12 @@ let cardFlippedState = {};   // cardId → bool (which face is showing)
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
+// Coarse check used to avoid burning ~10 MB of mobile data preloading Pyodide.
+function isLikelyMobile() {
+  if (navigator.connection && navigator.connection.saveData) return true;
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+}
+
 function toast(msg) {
   const el = document.getElementById("toast");
   el.textContent = msg;
@@ -997,6 +1011,8 @@ function toast(msg) {
 const fs = {
   dirHandle: null,
   connected: false,
+  readonly: false,          // true when content came from fetch() (deployed/any device)
+  manifestLoaded: false,
   lessons: new Map(),       // id -> lesson data
   quizzes: new Map(),       // id -> quiz definition
   quizDirs: new Map(),      // quizId -> directory handle
@@ -1100,6 +1116,7 @@ const fsm = {
   },
 
   async loadAll() {
+    fs.readonly = false;   // connected to a real folder → author mode (read + write)
     fs.lessons.clear();
     fs.quizzes.clear();
     fs.quizDirs.clear();
@@ -1158,6 +1175,60 @@ const fsm = {
       fs.syllabusProgress = parseSyllabusChapters(text);
     } catch (e) { /* no SYLLABUS.md — leave null */ }
     renderSyllabusProgress();
+  },
+
+  // Read-only content load over HTTP — works on every device (no File System Access API).
+  // The browser can't list a directory over HTTP, so we read manifest.json first.
+  async loadFromManifest() {
+    fs.lessons.clear();
+    fs.quizzes.clear();
+    fs.quizDirs.clear();
+    fs.attempts.clear();
+
+    let manifest;
+    try {
+      const res = await fetch("manifest.json", { cache: "no-cache" });
+      if (!res.ok) throw new Error(`manifest ${res.status}`);
+      manifest = await res.json();
+    } catch (e) {
+      console.warn("No content manifest available:", e);
+      return false;
+    }
+
+    const fetchJSON = async (path) => (await (await fetch(path)).json());
+
+    await Promise.all((manifest.lessons || []).map(async (path) => {
+      try {
+        const data = await fetchJSON(path);
+        data._filename = path.split("/").pop();
+        data._readonly = true;
+        fs.lessons.set(data.id, data);
+      } catch (e) { console.warn("Bad lesson:", path, e); }
+    }));
+
+    // Quiz definitions only — attempt history is per-user (Firebase, a later phase).
+    await Promise.all((manifest.quizzes || []).map(async (path) => {
+      try {
+        const def = await fetchJSON(path);
+        def._dirName = path.split("/").slice(-2, -1)[0];
+        def._readonly = true;
+        fs.quizzes.set(def.id, def);
+        fs.attempts.set(def.id, []);
+      } catch (e) { console.warn("Bad quiz:", path, e); }
+    }));
+
+    // Auto-load flashcard decks on a fresh device (don't clobber local edits/progress).
+    if (!(state.cards && state.cards.length)) {
+      for (const deck of (manifest.flashcardDecks || [])) {
+        try { mergeFlashcardDeck(await fetchJSON(deck)); }
+        catch (e) { console.warn("Bad deck:", deck, e); }
+      }
+    }
+
+    fs.readonly = true;
+    fs.manifestLoaded = true;
+    renderSyllabusProgress();
+    return true;
   },
 
   lessonFilename(lesson) {
@@ -2766,7 +2837,7 @@ function getQuizzesSorted() {
 function renderQuizzes() {
   const list = document.getElementById("quizzesList");
   list.innerHTML = "";
-  if (!fs.connected) {
+  if (!fs.connected && !fs.manifestLoaded) {
     list.innerHTML = `<div class="empty-state">Click <strong>Connect</strong> to load quizzes from disk.</div>`;
     return;
   }
@@ -2809,7 +2880,7 @@ function renderQuizBody() {
 
   const hideAll = () => [editBtn, delBtn, dlBtn, updateBtn, reloadBtn, newAttemptBtn, attemptSelect].forEach(b => b.hidden = true);
 
-  if (!fs.connected) {
+  if (!fs.connected && !fs.manifestLoaded) {
     title.textContent = "—";
     hideAll();
     body.innerHTML = `<div class="connect-prompt">
@@ -2829,8 +2900,8 @@ function renderQuizBody() {
   const quiz = fs.quizzes.get(activeQuizId);
   if (!quiz) { activeQuizId = null; renderQuizBody(); return; }
   title.textContent = quiz.title;
-  editBtn.hidden = false;
-  delBtn.hidden = false;
+  editBtn.hidden = !fs.connected;   // editing/deleting writes to disk → author mode only
+  delBtn.hidden = !fs.connected;
   dlBtn.hidden = false;
   newAttemptBtn.hidden = false;
 
@@ -2856,8 +2927,8 @@ function renderQuizBody() {
     return;
   }
 
-  updateBtn.hidden = false;
-  reloadBtn.hidden = false;
+  updateBtn.hidden = !fs.connected;   // save/reload attempt to disk → author mode only
+  reloadBtn.hidden = !fs.connected;
 
   quiz.questions.forEach((q, i) => body.appendChild(renderQuestion(quiz, q, i)));
 
@@ -3321,7 +3392,7 @@ function getLessonsSorted() {
 function renderLessons() {
   const list = document.getElementById("lessonsList");
   list.innerHTML = "";
-  if (!fs.connected) {
+  if (!fs.connected && !fs.manifestLoaded) {
     list.innerHTML = `<div class="empty-state">Click <strong>Connect</strong> to load lessons from disk.</div>`;
     return;
   }
@@ -3391,7 +3462,7 @@ function renderLessonBody() {
   const updateBtn = document.getElementById("lessonUpdateBtn");
   const reloadBtn = document.getElementById("lessonReloadBtn");
 
-  if (!fs.connected) {
+  if (!fs.connected && !fs.manifestLoaded) {
     title.textContent = "—";
     meta.textContent = "";
     updateBtn.hidden = true;
@@ -3414,8 +3485,8 @@ function renderLessonBody() {
 
   const lesson = fs.lessons.get(activeLessonId);
   if (!lesson) { activeLessonId = null; renderLessonBody(); return; }
-  updateBtn.hidden = false;
-  reloadBtn.hidden = false;
+  updateBtn.hidden = !fs.connected;   // save/reload lesson to disk → author mode only
+  reloadBtn.hidden = !fs.connected;
 
   title.textContent = lesson.title;
   const exerciseCount = (lesson.exercises || []).length;
@@ -3666,7 +3737,7 @@ document.getElementById("quizReloadBtn").addEventListener("click", async () => {
 });
 
 document.getElementById("newAttemptBtn").addEventListener("click", async () => {
-  if (!activeQuizId || !fs.connected) return;
+  if (!activeQuizId || (!fs.connected && !fs.manifestLoaded)) return;
   const quiz = fs.quizzes.get(activeQuizId);
   if (!quiz) return;
   const newAttempt = {
@@ -3677,13 +3748,14 @@ document.getElementById("newAttemptBtn").addEventListener("click", async () => {
     qa: []
   };
   try {
-    await fsm.writeAttempt(quiz.id, newAttempt);
+    // Persist to disk only in author mode; read-only gets an in-memory practice attempt.
+    if (fs.connected) await fsm.writeAttempt(quiz.id, newAttempt);
     const arr = fs.attempts.get(quiz.id) || [];
     arr.push(newAttempt);
     fs.attempts.set(quiz.id, arr);
     activeSession = newAttempt;
     renderQuizBody();
-    toast("New attempt started");
+    toast(fs.connected ? "New attempt started" : "Practice attempt (not saved)");
   } catch (e) { alert("Could not create attempt: " + e.message); }
 });
 
@@ -3743,6 +3815,26 @@ document.getElementById("importBtn").addEventListener("click", () => document.ge
 // Apply a parsed import in one of two modes:
 //   "append"  — merge by id (keep existing, update matches, add new; union review queue)
 //   "replace" — wipe the deck and use only the file's contents
+// Merge a flashcard deck into state by id, without re-rendering (used during boot).
+function mergeFlashcardDeck(data) {
+  if (Array.isArray(data.categories)) {
+    const byId = new Map((state.categories || []).map(c => [c.id, c]));
+    data.categories.forEach(c => byId.set(c.id, c));
+    state.categories = Array.from(byId.values());
+  }
+  if (Array.isArray(data.cards)) {
+    const byId = new Map((state.cards || []).map(c => [c.id, c]));
+    data.cards.forEach(c => byId.set(c.id, c));
+    state.cards = Array.from(byId.values());
+  }
+  if (Array.isArray(data.reviewQueue)) {
+    const q = state.reviewQueue || [];
+    data.reviewQueue.forEach(id => { if (!q.includes(id)) q.push(id); });
+    state.reviewQueue = q;
+  }
+  saveState();
+}
+
 function applyImport(data, mode) {
   const hasCats = Array.isArray(data.categories);
   const hasCards = Array.isArray(data.cards);
@@ -3853,21 +3945,13 @@ document.getElementById("importFile").addEventListener("change", e => {
 
 /* ===== init ===== */
 function applyDeviceCapabilities() {
-  // FSA requires a Chromium-based engine. iOS browsers (including "Chrome on iPhone")
-  // are forced to use WebKit, which lacks the API. Detect by feature, not user agent.
+  // Content (lessons, quizzes, flashcards) loads read-only via fetch on EVERY device.
+  // Only authoring/saving needs the File System Access API (Chromium desktop), so the
+  // only thing we hide where it's unavailable is the "Connect" (author mode) button.
   const hasFSA = typeof window.showDirectoryPicker === "function";
   if (hasFSA) return;
-  // Phone / unsupported browser → flashcards-only mode
-  document.querySelector('.tab[data-tab="quiz"]').hidden = true;
-  document.querySelector('.tab[data-tab="lessons"]').hidden = true;
-  document.getElementById("connectBtn").hidden = true;
-  // Force cards tab regardless of stored pref
-  prefs.lastTab = "cards";
-  // Add a small explanatory banner
-  const banner = document.createElement("div");
-  banner.className = "fc-only-banner";
-  banner.textContent = "Flashcards-only mode — this browser doesn't support file access. Use Chrome on desktop for lessons and quizzes.";
-  document.body.insertBefore(banner, document.querySelector(".topbar").nextSibling);
+  const connectBtn = document.getElementById("connectBtn");
+  if (connectBtn) connectBtn.hidden = true;
 }
 
 async function bootstrap() {
@@ -3898,8 +3982,11 @@ async function bootstrap() {
     activeCategoryId = cats[0].id;
   }
 
-  // Try silent reconnect to study-tool folder
+  // Try a silent reconnect to a local study-tool folder (enables authoring on a
+  // Chromium desktop). If that doesn't connect, load content read-only over HTTP
+  // via the manifest so lessons/quizzes/flashcards work on every device.
   await fsm.tryReconnect();
+  if (!fs.connected) await fsm.loadFromManifest();
   updateConnectionUI();
 
   // Now that lessons/quizzes may have loaded from disk, pick defaults
@@ -3928,7 +4015,22 @@ async function bootstrap() {
   renderQuizBody();
   renderLessons();
   renderLessonBody();
+
+  // Warm up Python in the background so the first code-run is instant.
+  // Skip on mobile / data-saver to avoid the ~10 MB download until it's needed.
+  if (!isLikelyMobile()) {
+    setTimeout(() => { loadPyodideIfNeeded().catch(() => {}); }, 1200);
+  }
 }
+
+// Service worker → offline support + installability (PWA). Only over http(s).
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .catch(e => console.warn("Service worker registration failed:", e));
+  });
+}
+
 bootstrap();
 </script>
 </body>
