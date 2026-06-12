@@ -849,6 +849,7 @@
     <span class="sp-label" id="spLabel" hidden></span>
   </div>
   <div class="topbar-actions">
+    <span id="cloudStatus" class="cloud-status" title="Cloud sync status" hidden></span>
     <button id="connectBtn" class="ghost" title="Connect to your study-tool folder so lessons + quizzes sync to JSON files on disk">Connect</button>
     <button id="exportBtn" class="ghost" title="Export flashcards as JSON">Export</button>
     <button id="importBtn" class="ghost" title="Import flashcards JSON">Import</button>
@@ -951,6 +952,13 @@
 
 <div id="toast" class="toast"></div>
 
+<!-- Firebase SDK (compat build → global `firebase`) + project config. If the CDN is
+     unreachable the app still runs locally; cloud sync just stays off. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+
 <script>
 "use strict";
 
@@ -963,9 +971,11 @@ function loadState() {
   } catch (e) { console.warn("Failed to load state", e); }
   return { version: 1, categories: [], cards: [], reviewQueue: [], quizzes: [], sessions: [], lessons: [] };
 }
+let cloud = null;   // cloud-sync module, assigned near bootstrap (declared early so saveState can reference it)
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch (e) { console.warn("Failed to save state", e); }
+  if (cloud && cloud.enabled && !cloud._applying) cloud.scheduleSync();
 }
 const state = loadState();
 
@@ -3954,6 +3964,98 @@ function applyDeviceCapabilities() {
   if (connectBtn) connectBtn.hidden = true;
 }
 
+/* =====================================================================
+   Cloud sync (Phase 2) — anonymous auth + per-user flashcard state in
+   Firebase Realtime Database at /users/$uid/state (gated by security rules).
+   Anonymous auth = a stable per-DEVICE identity (cloud-backed, survives
+   reloads). True cross-device sync arrives with Google sign-in (next step),
+   which links devices to one uid. Degrades silently if Firebase is absent.
+   ===================================================================== */
+cloud = {
+  enabled: false,
+  uid: null,
+  db: null,
+  ref: null,
+  _timer: null,
+  _applying: false,    // true while merging REMOTE data in (suppresses re-push)
+  SCHEMA_VERSION: 1,
+
+  setStatus(text, kind) {
+    const el = document.getElementById("cloudStatus");
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = text;
+    const color = { ok: "#16a34a", pending: "#999", warn: "#b45309" }[kind] || "#999";
+    el.style.cssText = `font-size:12px;color:${color};padding:0 8px;white-space:nowrap;`;
+  },
+
+  init() {
+    if (!window.firebase || !window.FIREBASE_CONFIG) {
+      console.info("Firebase unavailable — running local-only (no cloud sync).");
+      return;
+    }
+    try {
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+      this.db = firebase.database();
+    } catch (e) { console.warn("Firebase init failed:", e); return; }
+
+    this.setStatus("Signing in…", "pending");
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) return;
+      this.uid = user.uid;
+      this.ref = this.db.ref("users/" + user.uid + "/state");
+      this.enabled = true;
+      await this.loadAndMerge();
+      this.setStatus(user.isAnonymous ? "Synced · this device" : "Synced", "ok");
+    });
+    firebase.auth().signInAnonymously().catch((e) => {
+      this.enabled = false;
+      if (e && e.code === "auth/operation-not-allowed") {
+        this.setStatus("Cloud off", "warn");
+        console.warn("Anonymous auth is not enabled in the Firebase console yet.");
+      } else {
+        this.setStatus("Offline", "warn");
+        console.warn("Anonymous sign-in failed:", e);
+      }
+    });
+  },
+
+  async loadAndMerge() {
+    try {
+      const remote = (await this.ref.once("value")).val();
+      if (remote && (Array.isArray(remote.cards) || Array.isArray(remote.categories))) {
+        this._applying = true;
+        mergeFlashcardDeck(remote);     // union remote into local by id
+        this._applying = false;
+        renderCategories();
+        renderCardsBody();
+      }
+      // Seed a new doc, or push the merged union back up.
+      this.push();
+    } catch (e) { console.warn("Cloud load failed:", e); }
+  },
+
+  scheduleSync() {
+    if (!this.enabled) return;
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this.push(), 800);
+  },
+
+  push() {
+    if (!this.enabled || !this.ref) return;
+    const payload = {
+      schemaVersion: this.SCHEMA_VERSION,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      categories: state.categories || [],
+      cards: state.cards || [],
+      reviewQueue: state.reviewQueue || [],
+    };
+    this.ref.set(payload)
+      .then(() => this.setStatus(this.uid ? "Synced · this device" : "Synced", "ok"))
+      .catch((e) => { console.warn("Cloud push failed:", e); this.setStatus("Sync error", "warn"); });
+  },
+};
+
 async function bootstrap() {
   // Run any pending data migrations
   migrateCardSourceRefs();
@@ -4015,6 +4117,9 @@ async function bootstrap() {
   renderQuizBody();
   renderLessons();
   renderLessonBody();
+
+  // Start cloud sync (anonymous auth → load/merge per-user state). Fire-and-forget.
+  cloud.init();
 
   // Warm up Python in the background so the first code-run is instant.
   // Skip on mobile / data-saver to avoid the ~10 MB download until it's needed.
