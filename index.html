@@ -850,6 +850,7 @@
   </div>
   <div class="topbar-actions">
     <span id="cloudStatus" class="cloud-status" title="Cloud sync status" hidden></span>
+    <button id="authBtn" class="ghost" title="Sign in with Google to sync across devices" hidden>Sign in</button>
     <button id="connectBtn" class="ghost" title="Connect to your study-tool folder so lessons + quizzes sync to JSON files on disk">Connect</button>
     <button id="exportBtn" class="ghost" title="Export flashcards as JSON">Export</button>
     <button id="importBtn" class="ghost" title="Import flashcards JSON">Import</button>
@@ -3684,6 +3685,15 @@ function renderLessonBody() {
 
 /* ===== connect + file sync handlers ===== */
 
+document.getElementById("authBtn").addEventListener("click", () => {
+  const btn = document.getElementById("authBtn");
+  if (btn.dataset.mode === "out") {
+    if (confirm("Sign out? Your data stays safe in your account and on this device.")) cloud.signOut();
+  } else {
+    cloud.signInWithGoogle();
+  }
+});
+
 document.getElementById("connectBtn").addEventListener("click", async () => {
   if (fs.connected) {
     if (!confirm(`Currently connected to "${fs.dirHandle?.name}". Pick a different folder?`)) return;
@@ -4001,12 +4011,19 @@ cloud = {
 
     this.setStatus("Signing in…", "pending");
     firebase.auth().onAuthStateChanged(async (user) => {
-      if (!user) return;
+      if (!user) {
+        // Signed out — resume anonymous so per-device sync keeps working.
+        this.enabled = false;
+        this.updateAuthUI(null);
+        firebase.auth().signInAnonymously().catch((e) => console.warn("Re-anon failed:", e));
+        return;
+      }
       this.uid = user.uid;
       this.ref = this.db.ref("users/" + user.uid + "/state");
       this.enabled = true;
+      this.updateAuthUI(user);
       await this.loadAndMerge();
-      this.setStatus(user.isAnonymous ? "Synced · this device" : "Synced", "ok");
+      this.setStatus(user.isAnonymous ? "Synced · this device" : "Synced ✓", "ok");
     });
     firebase.auth().signInAnonymously().catch((e) => {
       this.enabled = false;
@@ -4053,6 +4070,58 @@ cloud = {
     this.ref.set(payload)
       .then(() => this.setStatus(this.uid ? "Synced · this device" : "Synced", "ok"))
       .catch((e) => { console.warn("Cloud push failed:", e); this.setStatus("Sync error", "warn"); });
+  },
+
+  updateAuthUI(user) {
+    const btn = document.getElementById("authBtn");
+    if (!btn) return;
+    btn.hidden = false;
+    if (user && !user.isAnonymous) {
+      btn.textContent = user.email || "Account";
+      btn.title = "Signed in as " + (user.email || "") + " — click to sign out";
+      btn.dataset.mode = "out";
+    } else {
+      btn.textContent = "Sign in";
+      btn.title = "Sign in with Google to sync across all your devices";
+      btn.dataset.mode = "in";
+    }
+  },
+
+  // Sign in with Google. If currently anonymous, LINK (preserves uid + data).
+  // If that Google account already exists (another device), sign into it — the
+  // subsequent loadAndMerge unions this device's local cards into that account.
+  async signInWithGoogle() {
+    if (!window.firebase) return;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const current = firebase.auth().currentUser;
+    try {
+      if (current && current.isAnonymous) {
+        await current.linkWithPopup(provider);
+      } else {
+        await firebase.auth().signInWithPopup(provider);
+      }
+      toast("Signed in — your data now syncs across devices");
+    } catch (e) {
+      if (e.code === "auth/credential-already-in-use" && e.credential) {
+        try {
+          await firebase.auth().signInWithCredential(e.credential);
+          toast("Signed in — this device's data merged into your account");
+        } catch (e2) { console.warn("Sign-in after link conflict failed:", e2); toast("Sign-in failed"); }
+      } else if (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") {
+        /* user cancelled — ignore */
+      } else if (e.code === "auth/unauthorized-domain") {
+        toast("This domain isn't authorized for sign-in yet");
+        console.warn("Add this domain in Firebase Auth → Settings → Authorized domains.");
+      } else {
+        console.warn("Google sign-in failed:", e);
+        toast("Sign-in failed");
+      }
+    }
+  },
+
+  async signOut() {
+    try { await firebase.auth().signOut(); toast("Signed out"); }
+    catch (e) { console.warn("Sign-out failed:", e); }
   },
 };
 
