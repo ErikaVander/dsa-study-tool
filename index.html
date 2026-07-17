@@ -4019,6 +4019,7 @@ cloud = {
     try {
       firebase.initializeApp(window.FIREBASE_CONFIG);
       this.db = firebase.database();
+      this.writerId = uid();   // per-session id → lets the live listener ignore our own writes
     } catch (e) { console.warn("Firebase init failed:", e); return; }
 
     this.setStatus("Signing in…", "pending");
@@ -4042,12 +4043,14 @@ cloud = {
         });
         return;
       }
+      if (this.ref) this.ref.off();   // detach any listener from a previous account
       this.uid = user.uid;
       this.ref = this.db.ref("users/" + user.uid + "/state");
       this.enabled = true;
       this.updateAuthUI(user);
       await this.loadAndMerge();
       await this.loadAttempts();
+      this.subscribeLive();
       // Surface past attempts: default to the latest for the active quiz, then re-render.
       if (activeQuizId && !activeSession) {
         const arr = fs.attempts.get(activeQuizId) || [];
@@ -4087,6 +4090,7 @@ cloud = {
     const payload = {
       schemaVersion: this.SCHEMA_VERSION,
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      writerId: this.writerId,
       categories: state.categories || [],
       cards: state.cards || [],
       reviewQueue: state.reviewQueue || [],
@@ -4178,6 +4182,23 @@ cloud = {
         if (attempts.length) fs.attempts.set(quizId, attempts);
       });
     } catch (e) { console.warn("Load attempts failed:", e); }
+  },
+
+  // Live flashcard sync: apply changes pushed from OTHER devices/sessions in real
+  // time. Own writes are tagged with writerId and skipped. Won't re-render while a
+  // card editor is open (editMode), to avoid clobbering an in-progress edit.
+  subscribeLive() {
+    if (!this.ref) return;
+    this.ref.on("value", (snap) => {
+      const remote = snap.val();
+      if (!remote || remote.writerId === this.writerId) return;   // ignore our own echoes
+      if (!(Array.isArray(remote.cards) || Array.isArray(remote.categories))) return;
+      this._applying = true;
+      mergeFlashcardDeck(remote);
+      this._applying = false;
+      if (!editMode) { renderCategories(); renderCardsBody(); }
+      this.setStatus(this.uid ? "Synced ✓" : "Synced", "ok");
+    });
   },
 };
 
