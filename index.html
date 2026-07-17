@@ -4024,10 +4024,22 @@ cloud = {
     this.setStatus("Signing in…", "pending");
     firebase.auth().onAuthStateChanged(async (user) => {
       if (!user) {
-        // Signed out — resume anonymous so per-device sync keeps working.
+        // No signed-in user (fresh load with no saved session, or just signed out)
+        // → sign in anonymously as the default. CRITICAL: this is the ONLY place we
+        // call signInAnonymously(). Calling it unconditionally at startup races with
+        // Firebase restoring a persisted Google session and clobbers it — which drops
+        // the user back to anonymous (a new uid) on every reload.
         this.enabled = false;
         this.updateAuthUI(null);
-        firebase.auth().signInAnonymously().catch((e) => console.warn("Re-anon failed:", e));
+        firebase.auth().signInAnonymously().catch((e) => {
+          if (e && e.code === "auth/operation-not-allowed") {
+            this.setStatus("Cloud off", "warn");
+            console.warn("Anonymous auth is not enabled in the Firebase console.");
+          } else {
+            this.setStatus("Offline", "warn");
+            console.warn("Anonymous sign-in failed:", e);
+          }
+        });
         return;
       }
       this.uid = user.uid;
@@ -4045,16 +4057,8 @@ cloud = {
       renderQuizBody();
       this.setStatus(user.isAnonymous ? "Synced · this device" : "Synced ✓", "ok");
     });
-    firebase.auth().signInAnonymously().catch((e) => {
-      this.enabled = false;
-      if (e && e.code === "auth/operation-not-allowed") {
-        this.setStatus("Cloud off", "warn");
-        console.warn("Anonymous auth is not enabled in the Firebase console yet.");
-      } else {
-        this.setStatus("Offline", "warn");
-        console.warn("Anonymous sign-in failed:", e);
-      }
-    });
+    // NOTE: anonymous sign-in is triggered from inside onAuthStateChanged above (the
+    // !user branch) — deliberately NOT called here, to avoid clobbering a restored session.
   },
 
   async loadAndMerge() {
