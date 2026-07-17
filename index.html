@@ -978,6 +978,12 @@ function saveState() {
   catch (e) { console.warn("Failed to save state", e); }
   if (cloud && cloud.enabled && !cloud._applying) cloud.scheduleSync();
 }
+// Persist the active quiz attempt to the cloud (per-user). Disk save stays manual (author mode).
+function persistAttempt() {
+  if (cloud && cloud.enabled && activeQuizId && activeSession) {
+    cloud.scheduleAttemptSave(activeQuizId, activeSession);
+  }
+}
 const state = loadState();
 
 // UI prefs (persisted separately so they stay machine-local on import)
@@ -3076,6 +3082,7 @@ function renderQuestion(quiz, q, i) {
       activeSession.responses[i].note = noteVal;
     }
     saveState();
+    persistAttempt();
   });
 
   function getExpectedAnswerText() {
@@ -3144,6 +3151,7 @@ function renderQuestion(quiz, q, i) {
         activeSession.responses[i].selfRating = rating;
       }
       saveState();
+      persistAttempt();
     });
   });
   wrap.querySelector('[data-act="flashcard"]').addEventListener("click", () => {
@@ -3268,6 +3276,7 @@ function renderQuestion(quiz, q, i) {
       note: existing ? existing.note : undefined
     };
     saveState();
+    persistAttempt();
     showResult();
   });
   return wrap;
@@ -3768,14 +3777,17 @@ document.getElementById("newAttemptBtn").addEventListener("click", async () => {
     qa: []
   };
   try {
-    // Persist to disk only in author mode; read-only gets an in-memory practice attempt.
+    // Author mode → disk; signed-in → cloud; otherwise an in-memory practice attempt.
     if (fs.connected) await fsm.writeAttempt(quiz.id, newAttempt);
+    else if (cloud && cloud.enabled) cloud.saveAttempt(quiz.id, newAttempt);
     const arr = fs.attempts.get(quiz.id) || [];
     arr.push(newAttempt);
     fs.attempts.set(quiz.id, arr);
     activeSession = newAttempt;
     renderQuizBody();
-    toast(fs.connected ? "New attempt started" : "Practice attempt (not saved)");
+    toast(fs.connected ? "New attempt started"
+      : (cloud && cloud.enabled) ? "New attempt — saved to your account"
+      : "Practice attempt (not saved)");
   } catch (e) { alert("Could not create attempt: " + e.message); }
 });
 
@@ -4023,6 +4035,14 @@ cloud = {
       this.enabled = true;
       this.updateAuthUI(user);
       await this.loadAndMerge();
+      await this.loadAttempts();
+      // Surface past attempts: default to the latest for the active quiz, then re-render.
+      if (activeQuizId && !activeSession) {
+        const arr = fs.attempts.get(activeQuizId) || [];
+        if (arr.length) activeSession = arr[arr.length - 1];
+      }
+      renderQuizzes();
+      renderQuizBody();
       this.setStatus(user.isAnonymous ? "Synced · this device" : "Synced ✓", "ok");
     });
     firebase.auth().signInAnonymously().catch((e) => {
@@ -4122,6 +4142,38 @@ cloud = {
   async signOut() {
     try { await firebase.auth().signOut(); toast("Signed out"); }
     catch (e) { console.warn("Sign-out failed:", e); }
+  },
+
+  // Quiz attempts live at /users/$uid/attempts/$quizId/$attemptId. Stored as a JSON
+  // string to sidestep RTDB's array/null quirks (responses arrays contain nulls).
+  scheduleAttemptSave(quizId, attempt) {
+    if (!this.enabled || !attempt) return;
+    this._attemptTimers = this._attemptTimers || {};
+    clearTimeout(this._attemptTimers[attempt.id]);
+    this._attemptTimers[attempt.id] = setTimeout(() => this.saveAttempt(quizId, attempt), 800);
+  },
+
+  saveAttempt(quizId, attempt) {
+    if (!this.enabled || !this.uid || !attempt) return;
+    const clean = { ...attempt };
+    delete clean._filename;
+    this.db.ref(`users/${this.uid}/attempts/${quizId}/${attempt.id}`)
+      .set({ json: JSON.stringify(clean), updatedAt: firebase.database.ServerValue.TIMESTAMP })
+      .catch((e) => console.warn("Attempt save failed:", e));
+  },
+
+  async loadAttempts() {
+    if (!this.enabled || !this.uid) return;
+    try {
+      const byQuiz = (await this.db.ref(`users/${this.uid}/attempts`).once("value")).val() || {};
+      Object.keys(byQuiz).forEach((quizId) => {
+        const attempts = Object.values(byQuiz[quizId] || {})
+          .map((rec) => { try { return JSON.parse(rec.json); } catch (e) { return null; } })
+          .filter(Boolean)
+          .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""));
+        if (attempts.length) fs.attempts.set(quizId, attempts);
+      });
+    } catch (e) { console.warn("Load attempts failed:", e); }
   },
 };
 
