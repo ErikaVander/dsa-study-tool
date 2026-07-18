@@ -986,6 +986,47 @@ function persistAttempt() {
 }
 const state = loadState();
 
+/* ===== per-user PROFILE (Phase 3) =====
+   Everything that is per-USER learning data rather than flashcard-deck content:
+   lesson answers now, progress / known-unknown / session log later (Stage 3b).
+   Persisted locally (offline-first, like state) AND synced to the cloud at
+   /users/$uid/profile. Kept separate from `state` so the flashcard sync path is
+   untouched. `lessonAnswers[lessonId][exerciseId] = code`. */
+const PROFILE_KEY = "study-tool-profile-v1";
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p === "object") { p.lessonAnswers = p.lessonAnswers || {}; return p; }
+    }
+  } catch (e) { console.warn("Failed to load profile", e); }
+  return { schemaVersion: 1, lessonAnswers: {} };
+}
+const profile = loadProfile();
+function saveProfile() {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
+  catch (e) { console.warn("Failed to save profile", e); }
+  if (cloud && cloud.enabled && !cloud._applying) cloud.scheduleProfileSync();
+}
+// Record a lesson-exercise answer and schedule persistence. Called on textarea edit.
+function setLessonAnswer(lessonId, exerciseId, code) {
+  if (!lessonId || !exerciseId) return;
+  (profile.lessonAnswers[lessonId] = profile.lessonAnswers[lessonId] || {})[exerciseId] = code;
+  saveProfile();
+}
+// Copy any stored answers onto the in-memory lesson objects so they render.
+// Only overwrites when the profile actually has an entry (won't wipe seed answers).
+function hydrateLessonAnswers() {
+  fs.lessons.forEach((lesson) => {
+    const byEx = profile.lessonAnswers[lesson.id];
+    if (!byEx || !Array.isArray(lesson.exercises)) return;
+    lesson.exercises.forEach((ex) => {
+      if (ex && Object.prototype.hasOwnProperty.call(byEx, ex.id)) ex.userAnswer = byEx[ex.id];
+    });
+  });
+}
+
 // UI prefs (persisted separately so they stay machine-local on import)
 const PREFS_KEY = "study-tool-prefs-v1";
 let prefs = {};
@@ -3623,6 +3664,7 @@ function renderLessonBody() {
         ta.addEventListener("blur", () => {
           if (ta.value !== ex.userAnswer) {
             ex.userAnswer = ta.value;
+            setLessonAnswer(lesson.id, ex.id, ta.value);   // persist per-user (local + cloud)
           }
         });
         card.appendChild(block);
@@ -4050,6 +4092,7 @@ cloud = {
       this.updateAuthUI(user);
       await this.loadAndMerge();
       await this.loadAttempts();
+      await this.loadProfile();
       this.subscribeLive();
       // Surface past attempts: default to the latest for the active quiz, then re-render.
       if (activeQuizId && !activeSession) {
@@ -4184,6 +4227,58 @@ cloud = {
     } catch (e) { console.warn("Load attempts failed:", e); }
   },
 
+  // Per-user profile (lesson answers now; progress later) lives at
+  // /users/$uid/profile. Synced on sign-in + debounced push, like attempts —
+  // deliberately NOT a live listener, so a remote change can't re-render a lesson
+  // out from under someone typing an answer.
+  async loadProfile() {
+    if (!this.enabled || !this.uid) return;
+    try {
+      const remote = (await this.db.ref(`users/${this.uid}/profile`).once("value")).val();
+      if (remote) {
+        // lessonAnswers is stored as a JSON STRING: lesson/exercise ids contain '.'
+        // which RTDB forbids in keys (same reason quiz attempts are stringified).
+        let remoteAnswers = {};
+        try {
+          remoteAnswers = typeof remote.lessonAnswers === "string"
+            ? JSON.parse(remote.lessonAnswers)
+            : (remote.lessonAnswers || {});
+        } catch (e) { console.warn("Bad remote lessonAnswers:", e); }
+        if (remoteAnswers && typeof remoteAnswers === "object") {
+          // Union remote answers into local: remote wins per (lesson, exercise) key,
+          // but local-only entries (edited offline before this load) are preserved.
+          this._applying = true;
+          Object.keys(remoteAnswers).forEach((lessonId) => {
+            const local = profile.lessonAnswers[lessonId] = profile.lessonAnswers[lessonId] || {};
+            Object.assign(local, remoteAnswers[lessonId]);
+          });
+          if (remote.schemaVersion) profile.schemaVersion = remote.schemaVersion;
+          saveProfile();          // persist merged result locally
+          this._applying = false;
+        }
+      }
+      hydrateLessonAnswers();
+      renderLessonBody();
+      this.pushProfile();       // seed a new doc, or push the merged union back up
+    } catch (e) { console.warn("Profile load failed:", e); }
+  },
+
+  scheduleProfileSync() {
+    if (!this.enabled) return;
+    clearTimeout(this._profileTimer);
+    this._profileTimer = setTimeout(() => this.pushProfile(), 800);
+  },
+
+  pushProfile() {
+    if (!this.enabled || !this.uid) return;
+    this.db.ref(`users/${this.uid}/profile`).set({
+      schemaVersion: profile.schemaVersion || 1,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      writerId: this.writerId,
+      lessonAnswers: JSON.stringify(profile.lessonAnswers || {}),   // stringified: ids contain '.'
+    }).catch((e) => console.warn("Profile push failed:", e));
+  },
+
   // Live flashcard sync: apply changes pushed from OTHER devices/sessions in real
   // time. Own writes are tagged with writerId and skipped. Won't re-render while a
   // card editor is open (editMode), to avoid clobbering an in-progress edit.
@@ -4257,6 +4352,7 @@ async function bootstrap() {
     activeLessonId = lessons[lessons.length - 1].id;
   }
 
+  hydrateLessonAnswers();   // apply locally-persisted lesson answers before first render
   renderCategories();
   renderCardsBody();
   renderQuizzes();

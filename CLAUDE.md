@@ -24,17 +24,32 @@ GitHub Pages, backed by Firebase, with in-browser Python.
   `/users/$uid/state` (LIVE-synced via .on listener), quiz attempts at
   `/users/$uid/attempts/$quizId/$attemptId` (stored as JSON strings; synced on reload).
 
-## Current state (2026-07-15)
+## Current state (2026-07-17)
 Done & user-verified: git + relocate; device-agnostic fetch loader + PWA; Firebase
 anonymous + Google auth; cross-device sync; quiz-attempt persistence; live flashcard
 sync. All four original goals met (any-device access, cross-device flashcards,
 Claude can still author locally, in-browser code execution preserved).
 
+**Phase 3 Stage 3a — per-user profile store + lesson-answer sync (code done, awaiting
+user UI-verify):** new in-memory `profile` (localStorage `study-tool-profile-v1` +
+cloud `/users/$uid/profile`), holding `lessonAnswers[lessonId][exerciseId] = code`.
+Mirrors the quiz-attempts pattern: synced on sign-in (`cloud.loadProfile`) + debounced
+push (`scheduleProfileSync`/`pushProfile`), NOT a live listener (so a remote change
+can't re-render a lesson mid-typing). `lessonAnswers` is stored as a JSON **string** —
+lesson ids (`lesson-1.2`) and exercise ids (`1.2-e1`) contain `.`, which RTDB forbids
+in keys (same reason attempts are stringified). Textarea `blur` → `setLessonAnswer()`;
+`hydrateLessonAnswers()` copies stored answers onto lesson objects before render.
+Verified: node --check clean; REST roundtrip with real dotted ids; cross-user read
+401-denied. SW bumped v3→v4. Still needs interactive cross-device UI verify by user.
+
 ## What's next
-- **Bigger Phase 3 (data model):** split the global "operating syllabus" from
-  per-user profiles; overlay+patch curriculum tree with `treeMode` custom-mode
-  escape hatch; move the per-user PROGRESS profile (known/unknown, review queue,
-  session log) into the cloud; sync lesson answers.
+- **Phase 3 Stage 3b (progress profile + live bar):** move the curriculum tree
+  skeleton into the repo as global `curriculum.json`; store per-user completion /
+  known-unknown as an overlay in `profile`; render the progress bar from global-tree +
+  overlay (replaces the SYLLABUS.md bar, which can't work live — SYLLABUS.md is
+  gitignored/not deployed). Session log into `profile` too.
+- **Phase 3 Stage 3c (later):** overlay+patch tree editing, `treeMode` custom-mode
+  escape hatch, versioned global-update review flow.
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
   Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
   Phase 8 email/newsletter.
@@ -46,7 +61,7 @@ Claude can still author locally, in-browser code execution preserved).
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v3`.
+  users. Currently `v4`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit
