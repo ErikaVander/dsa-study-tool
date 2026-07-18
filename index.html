@@ -835,6 +835,14 @@
   .cp-add-chapter:hover { border-color: var(--text-muted); color: var(--text); }
   .cp-mode-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
   .cp-mode-actions .cp-sub { margin: 0; }
+  /* Curriculum update review */
+  #cuChanges { margin-bottom: 12px; }
+  .cu-change { font-size: 13px; padding: 3px 0; line-height: 1.4; }
+  .cu-change.add { color: var(--good); }
+  .cu-change.remove { color: var(--bad, #dc2626); }
+  .cu-change.rename { color: var(--text); }
+  .cu-affected-item { font-size: 13px; color: var(--text); padding: 4px 0 4px 10px; border-left: 2px solid #f59e0b; margin: 4px 0; line-height: 1.4; }
+  .cu-always { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin: 14px 0 4px; cursor: pointer; }
 
   /* Study log & notes modal */
   .sl-note { margin-bottom: 12px; }
@@ -1077,11 +1085,14 @@ function loadProfile() {
         p.treeOverlay = (p.treeOverlay && typeof p.treeOverlay === "object") ? p.treeOverlay : {};  // {added,hidden,renamed,order}
         p.treeMode = p.treeMode === "custom" ? "custom" : "overlay";
         p.customTree = (p.customTree && typeof p.customTree === "object") ? p.customTree : null;
+        p.seenCurriculumVersion = Number.isFinite(p.seenCurriculumVersion) ? p.seenCurriculumVersion : 0;
+        p.curriculumSnapshot = (p.curriculumSnapshot && typeof p.curriculumSnapshot === "object") ? p.curriculumSnapshot : null;
+        p.curriculumUpdatePolicy = ["keep-mine", "take-new", "merge"].includes(p.curriculumUpdatePolicy) ? p.curriculumUpdatePolicy : "ask";
         return p;
       }
     }
   } catch (e) { console.warn("Failed to load profile", e); }
-  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {}, reviewQueue: [], currentSession: 1, treeOverlay: {}, treeMode: "overlay", customTree: null };
+  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {}, reviewQueue: [], currentSession: 1, treeOverlay: {}, treeMode: "overlay", customTree: null, seenCurriculumVersion: 0, curriculumSnapshot: null, curriculumUpdatePolicy: "ask" };
 }
 const profile = loadProfile();
 normalizeProgress();   // migrate legacy {done} overlay entries to {status}
@@ -1256,6 +1267,132 @@ function revertCurriculumToStandard() {
   profile.customTree = null;
   profile.treeOverlay = {};
   saveProfile(); renderSyllabusProgress();
+}
+
+/* ===== versioned global-update review (Phase 3c) =====
+   curriculum.json carries a `version`. When it increases, users with NO structural
+   customization auto-inherit silently. Users who customized the tree (or forked) get a
+   scoped review of only the changes that touch their customizations, with take-new /
+   keep-mine / merge and an "always do this" standing policy (profile.curriculumUpdatePolicy). */
+let curriculumUpdateHandled = false;
+
+function curriculumChapterMap() {
+  const map = {};
+  ((curriculum && curriculum.phases) || []).forEach((ph) => (ph.chapters || []).forEach((ch) => { map[ch.id] = ch.title || ch.id; }));
+  return map;
+}
+function snapshotCurriculum() {
+  return { version: (curriculum && curriculum.version) || 0, chapters: curriculumChapterMap() };
+}
+function userHasTreeCustomizations() {
+  if (profile.treeMode === "custom") return true;
+  const ov = profile.treeOverlay || {};
+  return (ov.added && ov.added.length) || Object.keys(ov.hidden || {}).length ||
+    Object.keys(ov.renamed || {}).length || Object.keys(ov.order || {}).length;
+}
+function diffCurriculum(oldMap, newMap) {
+  oldMap = oldMap || {}; newMap = newMap || {};
+  const added = Object.keys(newMap).filter((id) => !(id in oldMap));
+  const removed = Object.keys(oldMap).filter((id) => !(id in newMap));
+  const renamed = Object.keys(newMap).filter((id) => id in oldMap && oldMap[id] !== newMap[id])
+    .map((id) => ({ id, from: oldMap[id], to: newMap[id] }));
+  return { added, removed, renamed };
+}
+// Which of the user's customizations does this diff actually touch?
+function affectedCustomizations(diff) {
+  const out = [];
+  if (profile.treeMode === "custom") {
+    if (diff.added.length || diff.removed.length || diff.renamed.length) out.push({ type: "custom-fork" });
+    return out;
+  }
+  const ov = profile.treeOverlay || {};
+  const removedSet = new Set(diff.removed);
+  diff.renamed.forEach((r) => {
+    if (ov.renamed && Object.prototype.hasOwnProperty.call(ov.renamed, r.id)) {
+      out.push({ type: "rename-conflict", id: r.id, from: r.from, to: r.to, yours: ov.renamed[r.id] });
+    }
+  });
+  const touchesRemoved = (id) => removedSet.has(id);
+  Object.keys(ov.hidden || {}).forEach((id) => { if (touchesRemoved(id)) out.push({ type: "orphan-hidden", id }); });
+  (ov.added || []).forEach((a) => { if (a.afterId && touchesRemoved(a.afterId)) out.push({ type: "orphan-anchor", id: a.id, afterId: a.afterId }); });
+  return out;
+}
+function acceptCurriculumVersion() {
+  profile.seenCurriculumVersion = (curriculum && curriculum.version) || 0;
+  profile.curriculumSnapshot = snapshotCurriculum();
+  saveProfile();
+}
+function applyCurriculumUpdate(choice, always) {
+  if (choice === "take-new") {
+    profile.treeOverlay = {}; profile.treeMode = "overlay"; profile.customTree = null;
+  } else if (choice === "merge" && profile.treeMode !== "custom") {
+    // Keep the user's overlay but let global win where it changed the same thing, and
+    // drop entries pointing at chapters the global removed.
+    const ov = profile.treeOverlay || {};
+    const newMap = curriculumChapterMap();
+    const oldMap = (profile.curriculumSnapshot && profile.curriculumSnapshot.chapters) || {};
+    diffCurriculum(oldMap, newMap).renamed.forEach((r) => { if (ov.renamed) delete ov.renamed[r.id]; });
+    const removed = new Set(diffCurriculum(oldMap, newMap).removed);
+    Object.keys(ov.hidden || {}).forEach((id) => { if (removed.has(id)) delete ov.hidden[id]; });
+    Object.keys(ov.order || {}).forEach((p) => { ov.order[p] = (ov.order[p] || []).filter((id) => !removed.has(id)); });
+  }
+  // 'keep-mine' (and 'merge' in custom mode) leave the customizations untouched.
+  if (always) profile.curriculumUpdatePolicy = choice;
+  acceptCurriculumVersion();
+  renderSyllabusProgress();
+}
+function checkCurriculumUpdate() {
+  if (curriculumUpdateHandled) return;
+  if (!curriculum || !curriculum.version) return;
+  const v = curriculum.version, seen = profile.seenCurriculumVersion || 0;
+  if (v <= seen) { if (!profile.curriculumSnapshot) { profile.curriculumSnapshot = snapshotCurriculum(); saveProfile(); } return; }
+  const hasSnap = profile.curriculumSnapshot && profile.curriculumSnapshot.chapters;
+  // First-ever baseline, or no customizations → auto-inherit silently.
+  if (!hasSnap || !userHasTreeCustomizations()) { curriculumUpdateHandled = true; acceptCurriculumVersion(); return; }
+  const diff = diffCurriculum(profile.curriculumSnapshot.chapters, curriculumChapterMap());
+  const affected = affectedCustomizations(diff);
+  if (!affected.length) { curriculumUpdateHandled = true; acceptCurriculumVersion(); return; }   // change didn't touch their customizations
+  if (profile.curriculumUpdatePolicy !== "ask") { curriculumUpdateHandled = true; applyCurriculumUpdate(profile.curriculumUpdatePolicy, false); return; }
+  curriculumUpdateHandled = true;
+  openCurriculumUpdateReview(diff, affected);
+}
+
+function openCurriculumUpdateReview(diff, affected) {
+  const backdrop = modal(`
+    <h2>Curriculum updated</h2>
+    <p class="cp-sub">The standard curriculum changed, and some of your customizations are affected. Choose how to reconcile them.</p>
+    <div id="cuChanges"></div>
+    <div id="cuAffected"></div>
+    <label class="cu-always"><input type="checkbox" id="cuAlways"> Always do this without asking</label>
+    <div class="modal-actions">
+      <button class="ghost" id="cuKeep">Keep mine</button>
+      <button class="ghost" id="cuMerge">Merge</button>
+      <button class="primary" id="cuTake">Take new</button>
+    </div>
+  `, (bd) => {
+    const changes = bd.querySelector("#cuChanges");
+    const addLine = (parent, cls, text) => { const d = document.createElement("div"); d.className = cls; d.textContent = text; parent.appendChild(d); };
+    if (diff.added.length) addLine(changes, "cu-change add", `Added: ${diff.added.join(", ")}`);
+    if (diff.removed.length) addLine(changes, "cu-change remove", `Removed: ${diff.removed.join(", ")}`);
+    diff.renamed.forEach((r) => addLine(changes, "cu-change rename", `Renamed ${r.id}: “${r.from}” → “${r.to}”`));
+
+    const aff = bd.querySelector("#cuAffected");
+    const h = document.createElement("div"); h.className = "cp-phase-head"; h.textContent = "Your affected customizations"; aff.appendChild(h);
+    affected.forEach((a) => {
+      let msg = "";
+      if (a.type === "rename-conflict") msg = `You renamed ${a.id} to “${a.yours}”; the standard is now “${a.to}”.`;
+      else if (a.type === "orphan-hidden") msg = `You hid ${a.id}, which no longer exists in the standard curriculum.`;
+      else if (a.type === "orphan-anchor") msg = `Your added chapter sits after ${a.afterId}, which was removed.`;
+      else if (a.type === "custom-fork") msg = `You're on a fully custom curriculum, so it won't receive these changes automatically.`;
+      addLine(aff, "cu-affected-item", msg);
+    });
+
+    const always = bd.querySelector("#cuAlways");
+    const finish = (choice) => { applyCurriculumUpdate(choice, always.checked); backdrop.remove(); toast("Curriculum updated"); };
+    bd.querySelector("#cuKeep").addEventListener("click", () => finish("keep-mine"));
+    bd.querySelector("#cuMerge").addEventListener("click", () => finish("merge"));
+    bd.querySelector("#cuTake").addEventListener("click", () => finish("take-new"));
+  });
 }
 
 // Set a chapter's mastery status in the per-user overlay (syncs via saveProfile).
@@ -5125,12 +5262,22 @@ cloud = {
           const ct = typeof remote.customTree === "string" ? JSON.parse(remote.customTree) : remote.customTree;
           if (ct && typeof ct === "object") profile.customTree = ct;
         } catch (e) { console.warn("Bad remote customTree:", e); }
+        // Curriculum-update bookkeeping: highest seen version wins; policy/snapshot remote-wins.
+        if (Number.isFinite(remote.seenCurriculumVersion)) {
+          profile.seenCurriculumVersion = Math.max(profile.seenCurriculumVersion || 0, remote.seenCurriculumVersion);
+        }
+        if (["keep-mine", "take-new", "merge", "ask"].includes(remote.curriculumUpdatePolicy)) profile.curriculumUpdatePolicy = remote.curriculumUpdatePolicy;
+        try {
+          const cs = typeof remote.curriculumSnapshot === "string" ? JSON.parse(remote.curriculumSnapshot) : remote.curriculumSnapshot;
+          if (cs && typeof cs === "object") profile.curriculumSnapshot = cs;
+        } catch (e) { console.warn("Bad remote curriculumSnapshot:", e); }
         saveProfile();
         this._applying = false;
       }
       hydrateLessonAnswers();
       renderLessonBody();
       renderSyllabusProgress();   // reflect the synced progress overlay
+      checkCurriculumUpdate();    // review global curriculum changes now that cloud state is merged
       this.pushProfile();       // seed a new doc, or push the merged union back up
     } catch (e) { console.warn("Profile load failed:", e); }
   },
@@ -5156,6 +5303,9 @@ cloud = {
       treeOverlay: JSON.stringify(profile.treeOverlay || {}),       // structural curriculum overlay
       treeMode: profile.treeMode || "overlay",
       customTree: JSON.stringify(profile.customTree || null),       // standalone tree when forked
+      seenCurriculumVersion: profile.seenCurriculumVersion || 0,
+      curriculumUpdatePolicy: profile.curriculumUpdatePolicy || "ask",
+      curriculumSnapshot: JSON.stringify(profile.curriculumSnapshot || null),
     }).catch((e) => console.warn("Profile push failed:", e));
   },
 
@@ -5211,6 +5361,9 @@ async function bootstrap() {
   await fsm.tryReconnect();
   if (!fs.connected) await fsm.loadFromManifest();
   await loadCurriculum();   // global curriculum tree for the progress bar (+ per-user overlay)
+  // Local-only mode (no cloud): check for curriculum updates now. Signed-in users are
+  // checked after cloud.loadProfile so the decision reflects synced state across devices.
+  if (!window.firebase || !window.FIREBASE_CONFIG) checkCurriculumUpdate();
   updateConnectionUI();
 
   // Now that lessons/quizzes may have loaded from disk, pick defaults

@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
-  "note": "Global curriculum skeleton (structure only \u2014 per-user completion lives in Firebase /users/$uid/profile.progress). Regenerate from SYLLABUS.md when chapters change.",
+  "version": 1,
+  "note": "Global curriculum skeleton (structure only \u2014 per-user completion lives in Firebase /users/$uid/profile.progress). Regenerate from SYLLABUS.md when chapters change. BUMP `version` whenever the tree changes so customized users get an update-review prompt (see checkCurriculumUpdate).",
   "phases": [
     {
       "id": "phase-1",

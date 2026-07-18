@@ -111,8 +111,21 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   stringified. SW v8→v9. Verified: node --check; full logic test (add/hide/rename/reorder,
   fork bakes+clears, edit-in-custom, revert restores 3-chapter base); REST roundtrip.
 
-## What's next (remaining 3c sweep, tasks tracked in the session task list)
-- Versioned global-update review flow (last 3c item).
+- **Versioned global-update review flow (code done, awaiting UI-verify):** `curriculum.json`
+  now carries a `version` (bump it whenever the tree changes). `checkCurriculumUpdate()` runs
+  after cloud profile load (or in bootstrap when cloud is off): if `version` > profile.
+  seenCurriculumVersion, users with NO structural customization auto-inherit silently; users
+  who customized get `openCurriculumUpdateReview()` — a scoped modal showing only the changes
+  that touch their customizations (rename-conflict, orphaned hide/anchor, or a whole-tree note
+  in custom mode) with Keep mine / Merge / Take new + an "always do this" standing policy
+  (`profile.curriculumUpdatePolicy`). First-ever load stores a baseline snapshot silently (no
+  prompt). Merge = keep overlay but let global win on co-changed renames and drop refs to
+  removed chapters. Cloud syncs seenCurriculumVersion (max), policy, and snapshot. SW v9→v10.
+  Verified: node --check; 8-case decision test (auto/prompt/policy/baseline/seen/merge); REST
+  roundtrip. NOTE: bumping `version` in curriculum.json is manual — do it on any tree change.
+
+## What's next
+- Phase 3 Stage 3c is CODE-COMPLETE (all 5 items shipped); needs interactive UI-verify pass.
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
   Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
   Phase 8 email/newsletter.
@@ -124,7 +137,7 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v9`.
+  users. Currently `v10`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit
