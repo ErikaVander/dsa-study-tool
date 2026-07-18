@@ -45,8 +45,8 @@ phone after reload). SW bumped v3→v4. (Deploy gotcha hit once: the Pages build
 7cfccea hung ~15 min then errored — GitHub-side, not the code; `gh api -X POST
 repos/.../pages/builds` requeued it and it built. Watch for stuck Pages builds.)
 
-**Phase 3 Stage 3b — live progress bar from global tree + per-user overlay (code done,
-awaiting user UI-verify):** curriculum skeleton (structure only, 7 phases / 61 chapters)
+**Phase 3 Stage 3b — live progress bar from global tree + per-user overlay (DONE &
+USER-VERIFIED 2026-07-17, commit e600a25):** curriculum skeleton (structure only, 7 phases / 61 chapters)
 extracted into repo-committed **`curriculum.json`** (regenerate from private/SYLLABUS.md
 when chapters change — same spirit as gen_manifest). Per-user completion is the overlay
 `profile.progress[chapterId] = {done}`, stored stringified in the cloud profile (chapter
@@ -63,7 +63,8 @@ SYLLABUS.md needed). This is now the primary way to set progress; SYLLABUS.md is
 one-time seed + notes. `curriculum.json` added to SW precache; SW bumped v4→v5.
 Verified: node --check; curriculum.json structure-only; merge logic (Erika's 1.1–1.5 done
 maps correctly, 7 phase-start dots, no orphan ids); REST roundtrip of stringified progress;
-toggle-vs-reseed logic (re-seed does not revert a toggle). Interactive UI verify pending.
+toggle-vs-reseed logic (re-seed does not revert a toggle). USER-VERIFIED cross-device:
+checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and synced to phone.
 
 ## What's next
 - **Phase 3 Stage 3c:** overlay+patch tree editing (insert/reorder/skip custom nodes),
