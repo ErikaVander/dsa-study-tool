@@ -30,8 +30,8 @@ anonymous + Google auth; cross-device sync; quiz-attempt persistence; live flash
 sync. All four original goals met (any-device access, cross-device flashcards,
 Claude can still author locally, in-browser code execution preserved).
 
-**Phase 3 Stage 3a — per-user profile store + lesson-answer sync (code done, awaiting
-user UI-verify):** new in-memory `profile` (localStorage `study-tool-profile-v1` +
+**Phase 3 Stage 3a — per-user profile store + lesson-answer sync (DONE & USER-VERIFIED
+2026-07-17, commit 7cfccea):** new in-memory `profile` (localStorage `study-tool-profile-v1` +
 cloud `/users/$uid/profile`), holding `lessonAnswers[lessonId][exerciseId] = code`.
 Mirrors the quiz-attempts pattern: synced on sign-in (`cloud.loadProfile`) + debounced
 push (`scheduleProfileSync`/`pushProfile`), NOT a live listener (so a remote change
@@ -40,7 +40,10 @@ lesson ids (`lesson-1.2`) and exercise ids (`1.2-e1`) contain `.`, which RTDB fo
 in keys (same reason attempts are stringified). Textarea `blur` → `setLessonAnswer()`;
 `hydrateLessonAnswers()` copies stored answers onto lesson objects before render.
 Verified: node --check clean; REST roundtrip with real dotted ids; cross-user read
-401-denied. SW bumped v3→v4. Still needs interactive cross-device UI verify by user.
+401-denied; USER-VERIFIED cross-device (typed a lesson answer on laptop, saw it on
+phone after reload). SW bumped v3→v4. (Deploy gotcha hit once: the Pages build for
+7cfccea hung ~15 min then errored — GitHub-side, not the code; `gh api -X POST
+repos/.../pages/builds` requeued it and it built. Watch for stuck Pages builds.)
 
 ## What's next
 - **Phase 3 Stage 3b (progress profile + live bar):** move the curriculum tree
