@@ -840,6 +840,28 @@
   .sl-entry-del:hover { color: var(--bad, #dc2626); }
   .sl-entry-body { font-size: 13px; color: var(--text); margin-top: 3px; line-height: 1.4; white-space: pre-wrap; }
 
+  /* Review queue modal */
+  .rq-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -8px 0 12px; }
+  .rq-session { font-size: 13px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
+  .rq-session #rqSess { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; min-width: 20px; text-align: center; }
+  .rq-step { border: 1px solid var(--border); background: transparent; color: var(--text); width: 22px; height: 22px; border-radius: 5px; cursor: pointer; line-height: 1; }
+  .rq-step:hover { border-color: var(--text-muted); }
+  .rq-add { display: flex; gap: 8px; margin-bottom: 12px; }
+  .rq-add input { flex: 1 1 auto; font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .rq-item { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 10px; margin-bottom: 8px; }
+  .rq-item.due { border-color: #f59e0b; background: rgba(245,158,11,0.06); }
+  .rq-item.locked { opacity: 0.6; }
+  .rq-item-head { display: flex; align-items: baseline; gap: 8px; }
+  .rq-concept { font-size: 14px; font-weight: 600; flex: 1 1 auto; }
+  .rq-badge { font-size: 11px; font-weight: 600; color: var(--text-muted); flex: 0 0 auto; white-space: nowrap; }
+  .rq-item.due .rq-badge { color: #b45309; }
+  .rq-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .rq-status { font-size: 12px; color: var(--text); margin-top: 4px; line-height: 1.4; white-space: pre-wrap; }
+  .rq-acts { display: flex; gap: 6px; margin-top: 8px; }
+  .rq-act { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border); background: transparent; cursor: pointer; }
+  .rq-act.nailed:hover { background: var(--good); border-color: var(--good); color: #fff; }
+  .rq-act.struggled:hover { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: var(--text); color: var(--bg);
@@ -883,6 +905,7 @@
   </div>
   <div class="topbar-actions">
     <span id="cloudStatus" class="cloud-status" title="Cloud sync status" hidden></span>
+    <button id="reviewBtn" class="ghost" title="Spaced-repetition review queue">Review</button>
     <button id="logBtn" class="ghost" title="Study log &amp; notes">Log</button>
     <button id="authBtn" class="ghost" title="Sign in with Google to sync across devices" hidden>Sign in</button>
     <button id="connectBtn" class="ghost" title="Connect to your study-tool folder so lessons + quizzes sync to JSON files on disk">Connect</button>
@@ -1037,11 +1060,13 @@ function loadProfile() {
         p.progress = p.progress || {};   // { chapterId: { status } } — curriculum overlay
         p.sessionLog = Array.isArray(p.sessionLog) ? p.sessionLog : [];
         p.notes = (p.notes && typeof p.notes === "object") ? p.notes : {};  // {goal,currentStatus,troubleAreas,strengths}
+        p.reviewQueue = Array.isArray(p.reviewQueue) ? p.reviewQueue : [];  // SRS concept queue
+        p.currentSession = Number.isFinite(p.currentSession) ? p.currentSession : 1;
         return p;
       }
     }
   } catch (e) { console.warn("Failed to load profile", e); }
-  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {} };
+  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {}, reviewQueue: [], currentSession: 1 };
 }
 const profile = loadProfile();
 normalizeProgress();   // migrate legacy {done} overlay entries to {status}
@@ -1234,6 +1259,90 @@ function seedNotesFromSyllabus(parsed) {
   if ((!profile.sessionLog || !profile.sessionLog.length) && (parsed.sessionLog || []).length) {
     profile.sessionLog = parsed.sessionLog;
     changed = true;
+  }
+  if (changed) saveProfile();
+}
+
+/* ===== spaced-repetition concept queue (Phase 3c) =====
+   profile.reviewQueue: [{ id, concept, added, lastReviewed, interval, nextReview, status }]
+   where interval/lastReviewed/nextReview are SESSION numbers. SRS: nail → interval doubles
+   (cap 16 = "locked in"), struggle → reset to 1; nextReview = currentSession + interval.
+   profile.currentSession tracks which session you're on (drives what's "due"). */
+const SRS_INTERVALS = [1, 2, 4, 8, 16];
+function srsNextInterval(interval, outcome) {
+  const cur = Number(interval) || 1;
+  if (outcome === "struggled") return 1;
+  const doubled = cur * 2;
+  return doubled > 16 ? 16 : doubled;   // cap at 16 (locked in)
+}
+function reviewItem(id, outcome) {
+  const item = (profile.reviewQueue || []).find((r) => r.id === id);
+  if (!item) return;
+  const s = profile.currentSession || 1;
+  item.interval = srsNextInterval(item.interval, outcome);
+  item.lastReviewed = s;
+  item.nextReview = s + item.interval;
+  item.status = (outcome === "nailed" ? "nailed" : "reset") + " @ session " + s +
+    (item.status ? " · " + item.status.replace(/^(nailed|reset) @ session \d+ · /, "") : "");
+  saveProfile();
+}
+function setCurrentSession(n) {
+  profile.currentSession = Math.max(1, Math.round(Number(n) || 1));
+  saveProfile();
+}
+function addReviewConcept(concept) {
+  if (!concept) return;
+  const s = profile.currentSession || 1;
+  profile.reviewQueue = profile.reviewQueue || [];
+  profile.reviewQueue.push({ id: uid(), concept, added: s, lastReviewed: null, interval: 1, nextReview: s + 1, status: "new" });
+  saveProfile();
+}
+function deleteReviewConcept(id) {
+  profile.reviewQueue = (profile.reviewQueue || []).filter((r) => r.id !== id);
+  saveProfile();
+}
+
+// Parse the "Spaced Repetition Review Queue" table from SYLLABUS.md. Columns:
+// Concept | Added | Last Reviewed | Interval | Next Review (Session #) | Status.
+// Session cells look like "Session 8" / "—"; stable ids ("rq-N") for dedupe on re-seed.
+function parseSyllabusReviewQueue(md) {
+  const sessNum = (c) => { const m = (c || "").match(/(\d+)/); return m ? Number(m[1]) : null; };
+  const out = [];
+  let inQ = false;
+  for (const line of md.split("\n")) {
+    const h2 = line.match(/^##\s+(.*)$/);
+    if (h2) { inQ = /Review Queue/i.test(h2[1]); continue; }
+    if (!inQ) continue;
+    const t = line.trim();
+    if (!t.startsWith("|")) continue;
+    const cells = t.split("|").slice(1, -1).map((c) => c.trim());
+    if (cells.length < 6) continue;
+    if (/^concept$/i.test(cells[0]) || /^-+$/.test(cells[0].replace(/\s/g, ""))) continue;  // header/sep
+    out.push({
+      id: "rq-" + out.length,
+      concept: cells[0].replace(/`/g, ""),   // drop markdown code ticks for plain display
+      added: sessNum(cells[1]),
+      lastReviewed: sessNum(cells[2]),
+      interval: Number(cells[3]) || 1,
+      nextReview: sessNum(cells[4]),
+      status: cells[5],
+    });
+  }
+  return out;
+}
+
+// Non-destructive: seed the review queue only if it's currently empty. Also seed
+// currentSession to (max lastReviewed) + 1 if we still have the default.
+function seedReviewQueueFromSyllabus(items) {
+  if (!Array.isArray(items) || !items.length) return;
+  let changed = false;
+  if (!profile.reviewQueue || !profile.reviewQueue.length) {
+    profile.reviewQueue = items;
+    changed = true;
+    if (!profile.currentSession || profile.currentSession <= 1) {
+      const maxSeen = items.reduce((m, r) => Math.max(m, r.lastReviewed || 0, r.added || 0), 0);
+      if (maxSeen > 0) { profile.currentSession = maxSeen + 1; }
+    }
   }
   if (changed) saveProfile();
 }
@@ -1455,6 +1564,7 @@ const fsm = {
       fs.syllabusProgress = parseSyllabusChapters(text);
       seedProgressFromSyllabus(fs.syllabusProgress);
       seedNotesFromSyllabus(parseSyllabusNotesAndLog(text));   // seed study log + notes (non-destructive)
+      seedReviewQueueFromSyllabus(parseSyllabusReviewQueue(text));   // seed SRS concept queue
     } catch (e) { /* no SYLLABUS.md — leave null */ }
     renderSyllabusProgress();
   },
@@ -2101,6 +2211,100 @@ function openStudyLog() {
     });
 
     bd.querySelector("#slDone").addEventListener("click", () => backdrop.remove());
+  });
+}
+
+// "Review" header button → spaced-repetition concept queue. Items due at or before the
+// current session float to the top; Nailed doubles the interval, Struggled resets it.
+function openReviewQueue() {
+  const backdrop = modal(`
+    <h2>Review queue</h2>
+    <div class="rq-bar">
+      <div class="rq-session">Session <button class="rq-step" id="rqDown">−</button><span id="rqSess"></span><button class="rq-step" id="rqUp">+</button></div>
+      <span class="cp-sub" id="rqDueCount"></span>
+    </div>
+    <div class="rq-add">
+      <input id="rqNew" placeholder="Add a concept to track…">
+      <button class="ghost" id="rqAdd">Add</button>
+    </div>
+    <div id="rqList"></div>
+    <div class="modal-actions"><button class="primary" id="rqDone">Done</button></div>
+  `, (bd) => {
+    const listEl = bd.querySelector("#rqList");
+    const sessEl = bd.querySelector("#rqSess");
+    const dueEl = bd.querySelector("#rqDueCount");
+
+    const render = () => {
+      const s = profile.currentSession || 1;
+      sessEl.textContent = " " + s + " ";
+      const q = (profile.reviewQueue || []).slice();
+      // due (soonest nextReview) first; locked-in (interval>=16) last
+      q.sort((a, b) => {
+        const lockedA = (a.interval || 1) >= 16, lockedB = (b.interval || 1) >= 16;
+        if (lockedA !== lockedB) return lockedA ? 1 : -1;
+        return (a.nextReview || 999) - (b.nextReview || 999);
+      });
+      const dueCount = q.filter((r) => (r.interval || 1) < 16 && (r.nextReview || 0) <= s).length;
+      dueEl.textContent = q.length ? `${dueCount} due · ${q.length} tracked` : "";
+      listEl.innerHTML = "";
+      if (!q.length) {
+        const p = document.createElement("p"); p.className = "cp-sub"; p.textContent = "No concepts tracked yet."; listEl.appendChild(p); return;
+      }
+      q.forEach((r) => {
+        const locked = (r.interval || 1) >= 16;
+        const due = !locked && (r.nextReview || 0) <= s;
+        const row = document.createElement("div");
+        row.className = "rq-item" + (due ? " due" : "") + (locked ? " locked" : "");
+        const head = document.createElement("div");
+        head.className = "rq-item-head";
+        const name = document.createElement("span");
+        name.className = "rq-concept";
+        name.textContent = r.concept || "";
+        const badge = document.createElement("span");
+        badge.className = "rq-badge";
+        badge.textContent = locked ? "locked in" : due ? "due" : `next: S${r.nextReview ?? "?"}`;
+        const del = document.createElement("button");
+        del.className = "sl-entry-del"; del.textContent = "×"; del.title = "Stop tracking";
+        del.addEventListener("click", () => { if (confirm("Remove this concept from the queue?")) { deleteReviewConcept(r.id); render(); } });
+        head.appendChild(name); head.appendChild(badge); head.appendChild(del);
+        row.appendChild(head);
+
+        const meta = document.createElement("div");
+        meta.className = "rq-meta";
+        meta.textContent = `interval ${r.interval || 1} · last reviewed ${r.lastReviewed ? "S" + r.lastReviewed : "—"}`;
+        row.appendChild(meta);
+
+        if (r.status) {
+          const st = document.createElement("div"); st.className = "rq-status"; st.textContent = r.status; row.appendChild(st);
+        }
+        if (!locked) {
+          const acts = document.createElement("div");
+          acts.className = "rq-acts";
+          const nailed = document.createElement("button");
+          nailed.className = "rq-act nailed"; nailed.textContent = "Nailed";
+          nailed.addEventListener("click", () => { reviewItem(r.id, "nailed"); render(); });
+          const struggled = document.createElement("button");
+          struggled.className = "rq-act struggled"; struggled.textContent = "Struggled";
+          struggled.addEventListener("click", () => { reviewItem(r.id, "struggled"); render(); });
+          acts.appendChild(nailed); acts.appendChild(struggled);
+          row.appendChild(acts);
+        }
+        listEl.appendChild(row);
+      });
+    };
+
+    bd.querySelector("#rqDown").addEventListener("click", () => { setCurrentSession((profile.currentSession || 1) - 1); render(); });
+    bd.querySelector("#rqUp").addEventListener("click", () => { setCurrentSession((profile.currentSession || 1) + 1); render(); });
+    const addConcept = () => {
+      const inp = bd.querySelector("#rqNew");
+      const v = inp.value.trim();
+      if (!v) return;
+      addReviewConcept(v); inp.value = ""; render();
+    };
+    bd.querySelector("#rqAdd").addEventListener("click", addConcept);
+    bd.querySelector("#rqNew").addEventListener("keydown", (e) => { if (e.key === "Enter") addConcept(); });
+    bd.querySelector("#rqDone").addEventListener("click", () => backdrop.remove());
+    render();
   });
 }
 
@@ -2852,6 +3056,7 @@ document.getElementById("editModeBtn").addEventListener("click", () => {
 });
 document.getElementById("syllabusProgress").addEventListener("click", openCurriculumPanel);
 document.getElementById("logBtn").addEventListener("click", openStudyLog);
+document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
 document.getElementById("addCatBtn").addEventListener("click", () => {
   const name = prompt("New category name:");
   if (!name) return;
@@ -4718,6 +4923,18 @@ cloud = {
             profile.sessionLog = Object.values(byId);
           }
         } catch (e) { console.warn("Bad remote sessionLog:", e); }
+        try {
+          const rq = typeof remote.reviewQueue === "string" ? JSON.parse(remote.reviewQueue) : remote.reviewQueue;
+          if (Array.isArray(rq)) {
+            const byId = {};
+            (profile.reviewQueue || []).forEach((en) => { if (en && en.id) byId[en.id] = en; });
+            rq.forEach((en) => { if (en && en.id) byId[en.id] = en; });   // remote wins per id
+            profile.reviewQueue = Object.values(byId);
+          }
+        } catch (e) { console.warn("Bad remote reviewQueue:", e); }
+        if (Number.isFinite(remote.currentSession)) {
+          profile.currentSession = Math.max(profile.currentSession || 1, remote.currentSession);
+        }
         saveProfile();
         this._applying = false;
       }
@@ -4744,6 +4961,8 @@ cloud = {
       progress: JSON.stringify(profile.progress || {}),             // stringified: chapter ids contain '.'
       sessionLog: JSON.stringify(profile.sessionLog || []),         // stringified array
       notes: JSON.stringify(profile.notes || {}),                   // stringified free-text notes
+      reviewQueue: JSON.stringify(profile.reviewQueue || []),       // stringified SRS queue
+      currentSession: profile.currentSession || 1,
     }).catch((e) => console.warn("Profile push failed:", e));
   },
 

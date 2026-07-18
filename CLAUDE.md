@@ -87,8 +87,18 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   SW v6→v7. Verified: node --check; parser vs real SYLLABUS.md (11 entries, 4 note sections,
   no leaked header rows); dedup logic; REST roundtrip of sessionLog+notes.
 
+- **Review queue / SRS concept queue (code done, awaiting UI-verify):** `profile.reviewQueue`
+  (`[{id,concept,added,lastReviewed,interval,nextReview,status}]`, session-number based) +
+  `profile.currentSession`. New "Review" header button → `openReviewQueue()`: due items
+  (interval<16 and nextReview≤currentSession) float to top, Nailed doubles interval (cap 16 =
+  "locked in"), Struggled resets to 1; session +/- stepper; add/remove concepts. Author-mode
+  seeds from the SYLLABUS.md Review Queue table (`parseSyllabusReviewQueue`, stable "rq-N" ids,
+  seeds currentSession = max(lastReviewed/added)+1). Cloud: reviewQueue stringified + unioned
+  by id; currentSession = max(local,remote). SW v7→v8. Verified: node --check; parser vs real
+  SYLLABUS.md (45 items, currentSession→11); SRS transitions (2→4, 8→16, 16 cap, struggle→1);
+  REST roundtrip. NOTE: this is distinct from the flashcard `state.reviewQueue` (card-id queue).
+
 ## What's next (remaining 3c sweep, tasks tracked in the session task list)
-- Review queue (SRS concept queue) in-app.
 - Overlay+patch tree editing (insert/reorder/skip) + `treeMode` custom-mode escape hatch.
 - Versioned global-update review flow.
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
@@ -102,7 +112,7 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v7`.
+  users. Currently `v8`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit
