@@ -66,10 +66,21 @@ maps correctly, 7 phase-start dots, no orphan ids); REST roundtrip of stringifie
 toggle-vs-reseed logic (re-seed does not revert a toggle). USER-VERIFIED cross-device:
 checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and synced to phone.
 
-## What's next
-- **Phase 3 Stage 3c:** overlay+patch tree editing (insert/reorder/skip custom nodes),
-  `treeMode` custom-mode escape hatch, versioned global-update review flow. Session log +
-  known/unknown into `profile` too.
+**Phase 3 Stage 3c — IN PROGRESS (systematic sweep of remaining profile/curriculum items).**
+- **Known/unknown mastery per chapter (code done, awaiting UI-verify):** the curriculum
+  overlay `profile.progress[id]` went from `{done:bool}` to `{status}` where status ∈
+  known/learning/none. `normalizeProgress()` migrates legacy `{done}` (idempotent; runs on
+  local load + after cloud merge). Panel rows now have a Learning/Known segmented control
+  (click active → clears to none); header dots render green=known, amber=learning; label =
+  "known/total". `setChapterStatus()` replaces setChapterDone; author-mode seed marks only
+  checked chapters "known" (non-destructive). SW v5→v6. Verified: node --check + logic test
+  (migration, set/clear, seed-known-only vs cleared).
+
+## What's next (remaining 3c sweep, tasks tracked in the session task list)
+- Study log + trouble areas + strengths into `profile` (+ in-app view, author-mode seed).
+- Review queue (SRS concept queue) in-app.
+- Overlay+patch tree editing (insert/reorder/skip) + `treeMode` custom-mode escape hatch.
+- Versioned global-update review flow.
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
   Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
   Phase 8 email/newsletter.
@@ -81,7 +92,7 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v5`.
+  users. Currently `v6`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit

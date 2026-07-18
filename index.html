@@ -105,6 +105,7 @@
   .sp-dots::after  { left: 5px; width: var(--sp-fill, 0px); background: var(--good); }            /* filled track */
   .sp-dot { position: relative; z-index: 1; width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--border); box-sizing: border-box; }
   .sp-dot.done { background: var(--good); border-color: var(--good); }
+  .sp-dot.learning { background: #f59e0b; border-color: #f59e0b; }
   .sp-dot.major { width: 12px; height: 12px; border-width: 2px; }
   .sp-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
   .topbar-actions { display: flex; gap: 8px; align-items: center; }
@@ -811,11 +812,16 @@
   .cp-sub { font-size: 13px; color: var(--text-muted); margin: -8px 0 14px; }
   .cp-phase { margin-bottom: 14px; }
   .cp-phase-head { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 4px; }
-  .cp-row { display: flex; align-items: flex-start; gap: 9px; padding: 5px 4px; font-size: 14px; cursor: pointer; border-radius: 5px; }
+  .cp-row { display: flex; align-items: center; gap: 9px; padding: 5px 4px; font-size: 14px; border-radius: 5px; }
   .cp-row:hover { background: rgba(127,127,127,0.10); }
-  .cp-row input { margin: 2px 0 0; flex: 0 0 auto; cursor: pointer; }
   .cp-row-id { color: var(--text-muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; min-width: 34px; }
-  .cp-row.done .cp-row-txt { color: var(--text-muted); text-decoration: line-through; }
+  .cp-row-txt { flex: 1 1 auto; line-height: 1.35; }
+  .cp-row.known .cp-row-txt { color: var(--text-muted); }
+  .cp-seg { flex: 0 0 auto; display: inline-flex; gap: 4px; }
+  .cp-seg-btn { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; line-height: 1.4; }
+  .cp-seg-btn:hover { border-color: var(--text-muted); }
+  .cp-seg-btn.learning.active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+  .cp-seg-btn.known.active { background: var(--good); border-color: var(--good); color: #fff; }
   .syllabus-progress { cursor: pointer; }
 
   .toast {
@@ -1011,7 +1017,7 @@ function loadProfile() {
       const p = JSON.parse(raw);
       if (p && typeof p === "object") {
         p.lessonAnswers = p.lessonAnswers || {};
-        p.progress = p.progress || {};   // { chapterId: { done: bool } } — curriculum overlay
+        p.progress = p.progress || {};   // { chapterId: { status } } — curriculum overlay
         return p;
       }
     }
@@ -1019,6 +1025,7 @@ function loadProfile() {
   return { schemaVersion: 1, lessonAnswers: {}, progress: {} };
 }
 const profile = loadProfile();
+normalizeProgress();   // migrate legacy {done} overlay entries to {status}
 function saveProfile() {
   try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
   catch (e) { console.warn("Failed to save profile", e); }
@@ -1042,11 +1049,14 @@ function hydrateLessonAnswers() {
   });
 }
 
-/* ===== curriculum (Phase 3b) =====
+/* ===== curriculum (Phase 3b/3c) =====
    Global tree skeleton (structure only) fetched from repo-committed curriculum.json.
-   Per-user completion is the overlay in profile.progress[chapterId] = {done}. The
-   progress bar is rendered from tree + overlay merged, so it works on every device
-   (the old bar read SYLLABUS.md, which is gitignored and never deployed). */
+   Per-user mastery is the overlay profile.progress[chapterId] = { status }, where
+   status ∈ "known" | "learning" | "none". The progress bar renders from tree + overlay
+   merged, so it works on every device (the old bar read SYLLABUS.md, which is gitignored
+   and never deployed). Legacy entries used { done: bool } — normalizeProgress() migrates
+   them ({done:true}→known, {done:false}→none). */
+const CHAPTER_STATUSES = ["none", "learning", "known"];
 let curriculum = null;
 async function loadCurriculum() {
   try {
@@ -1055,18 +1065,36 @@ async function loadCurriculum() {
   } catch (e) { console.warn("No curriculum.json — progress bar falls back to SYLLABUS.md if present:", e); }
 }
 
+// Migrate legacy { done: bool } overlay entries to { status }. Idempotent.
+function normalizeProgress() {
+  const prog = profile.progress;
+  if (!prog || typeof prog !== "object") return;
+  Object.keys(prog).forEach((id) => {
+    const e = prog[id];
+    if (e && typeof e === "object" && !e.status && Object.prototype.hasOwnProperty.call(e, "done")) {
+      prog[id] = { status: e.done ? "known" : "none" };
+    }
+  });
+}
+
+function chapterStatus(id) {
+  const e = profile.progress && profile.progress[id];
+  return (e && e.status) || "none";
+}
+
 // Merge the global tree with the per-user overlay into the flat item list the
 // progress bar renders. Returns null if no curriculum is loaded (bar then falls
 // back to the SYLLABUS.md-derived list, for local author mode offline).
 function buildCurriculumItems() {
   if (!curriculum || !Array.isArray(curriculum.phases)) return null;
-  const prog = profile.progress || {};
   const items = [];
   curriculum.phases.forEach((ph) => {
     (ph.chapters || []).forEach((ch, i) => {
+      const status = chapterStatus(ch.id);
       items.push({
         id: ch.id,
-        done: !!(prog[ch.id] && prog[ch.id].done),
+        status,
+        done: status === "known",   // "done" = mastered; kept for the fill/count logic
         phase: ph.phase || ph.title || "",
         title: ch.title || ch.id,
         phaseStart: i === 0,
@@ -1076,27 +1104,30 @@ function buildCurriculumItems() {
   return items;
 }
 
-// Mark a chapter complete/incomplete in the per-user overlay (syncs via saveProfile).
-function setChapterDone(id, done) {
+// Set a chapter's mastery status in the per-user overlay (syncs via saveProfile).
+// Always stores an explicit entry (even "none") so the author-mode seed won't
+// re-add a status the user deliberately cleared.
+function setChapterStatus(id, status) {
   if (!id) return;
+  if (!CHAPTER_STATUSES.includes(status)) status = "none";
   profile.progress = profile.progress || {};
-  profile.progress[id] = { done: !!done };
+  profile.progress[id] = { status };
   saveProfile();
   renderSyllabusProgress();
 }
 
 // Author-mode bridge: fold SYLLABUS.md checkbox state (creator's editing surface,
 // local folder only) into the synced per-user overlay so it reaches all devices.
-// Non-destructive: seeds ONLY chapters not already in the overlay, so it migrates
-// initial state once but never clobbers an in-app toggle (the overlay is authoritative).
+// A checked box seeds "known". Non-destructive: seeds ONLY chapters not already in
+// the overlay, so it migrates initial state once but never clobbers an in-app change.
 function seedProgressFromSyllabus(items) {
   if (!Array.isArray(items)) return;
   profile.progress = profile.progress || {};
   let changed = false;
   items.forEach((it) => {
-    if (!it.id) return;
+    if (!it.id || !it.done) return;   // only seed completed chapters as "known"
     if (!Object.prototype.hasOwnProperty.call(profile.progress, it.id)) {
-      profile.progress[it.id] = { done: it.done };
+      profile.progress[it.id] = { status: "known" };
       changed = true;
     }
   });
@@ -1749,30 +1780,36 @@ function renderSyllabusProgress() {
   // Fallback: SYLLABUS.md-derived list (local author mode when curriculum.json absent).
   const items = buildCurriculumItems() || fs.syllabusProgress;
   if (!items || !items.length) { dots.hidden = true; label.hidden = true; return; }
+  const statusOf = (x) => x.status || (x.done ? "known" : "none");   // fallback items lack status
   const total = items.length;
-  const done = items.filter(x => x.done).length;
-  let lastDone = -1;
-  items.forEach((x, i) => { if (x.done) lastDone = i; });
-  const fillPct = (lastDone >= 0 && total > 1) ? (lastDone / (total - 1)) * 100 : 0;
+  const known = items.filter(x => statusOf(x) === "known").length;
+  const learning = items.filter(x => statusOf(x) === "learning").length;
+  let lastKnown = -1;
+  items.forEach((x, i) => { if (statusOf(x) === "known") lastKnown = i; });
+  const fillPct = (lastKnown >= 0 && total > 1) ? (lastKnown / (total - 1)) * 100 : 0;
 
   dots.innerHTML = "";
   items.forEach(x => {
+    const st = statusOf(x);
     const d = document.createElement("div");
-    d.className = "sp-dot" + (x.done ? " done" : "") + (x.phaseStart ? " major" : "");
-    d.title = `${x.phase} · ${x.title}${x.done ? " ✓" : ""}`;
+    d.className = "sp-dot" + (st === "known" ? " done" : st === "learning" ? " learning" : "") + (x.phaseStart ? " major" : "");
+    const mark = st === "known" ? " ✓" : st === "learning" ? " …" : "";
+    d.title = `${x.phase} · ${x.title}${mark}`;
     dots.appendChild(d);
   });
   dots.style.setProperty("--sp-fill", fillPct + "%");
 
-  const pct = Math.round((done / total) * 100);
-  label.textContent = `${done}/${total} · ${pct}%`;
-  document.getElementById("syllabusProgress").title = `Curriculum progress — ${done} of ${total} chapters complete (click to update)`;
+  const pct = Math.round((known / total) * 100);
+  label.textContent = `${known}/${total} · ${pct}%`;
+  const learningNote = learning ? `, ${learning} learning` : "";
+  document.getElementById("syllabusProgress").title = `Curriculum progress — ${known} of ${total} chapters known${learningNote} (click to update)`;
   dots.hidden = false;
   label.hidden = false;
 }
 
-// Click the header progress bar → panel of phases/chapters with checkboxes. Toggling
-// writes to the per-user overlay (profile.progress), which syncs to every device.
+// Click the header progress bar → panel of phases/chapters, each with a Learning/Known
+// control. Setting a status writes to the per-user overlay (profile.progress), synced
+// to every device. Clicking the active status again clears it back to none.
 function openCurriculumPanel() {
   if (!curriculum || !Array.isArray(curriculum.phases) || !curriculum.phases.length) {
     toast("Curriculum still loading…");
@@ -1786,14 +1823,15 @@ function openCurriculumPanel() {
   `, (bd) => {
     const list = bd.querySelector("#cpList");
     const sub = bd.querySelector("#cpSub");
-    const prog = () => profile.progress || {};
     const refreshSub = () => {
-      let total = 0, done = 0;
+      let total = 0, known = 0, learning = 0;
       curriculum.phases.forEach((ph) => (ph.chapters || []).forEach((ch) => {
-        total++; if (prog()[ch.id] && prog()[ch.id].done) done++;
+        total++;
+        const s = chapterStatus(ch.id);
+        if (s === "known") known++; else if (s === "learning") learning++;
       }));
-      const pct = total ? Math.round((done / total) * 100) : 0;
-      sub.textContent = `${done} of ${total} chapters complete · ${pct}%`;
+      const pct = total ? Math.round((known / total) * 100) : 0;
+      sub.textContent = `${known} of ${total} known · ${pct}%` + (learning ? ` · ${learning} learning` : "");
     };
 
     curriculum.phases.forEach((ph) => {
@@ -1805,25 +1843,45 @@ function openCurriculumPanel() {
       grp.appendChild(head);
 
       (ph.chapters || []).forEach((ch) => {
-        const row = document.createElement("label");
-        row.className = "cp-row" + ((prog()[ch.id] && prog()[ch.id].done) ? " done" : "");
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.checked = !!(prog()[ch.id] && prog()[ch.id].done);
+        const row = document.createElement("div");
+        const applyRowClass = () => {
+          const s = chapterStatus(ch.id);
+          row.className = "cp-row" + (s === "known" ? " known" : s === "learning" ? " learning" : "");
+        };
         const idEl = document.createElement("span");
         idEl.className = "cp-row-id";
         idEl.textContent = ch.id;
         const txt = document.createElement("span");
         txt.className = "cp-row-txt";
         txt.textContent = ch.title || "";
-        cb.addEventListener("change", () => {
-          setChapterDone(ch.id, cb.checked);   // updates overlay, saves, re-renders header bar
-          row.classList.toggle("done", cb.checked);
-          refreshSub();
+
+        const seg = document.createElement("div");
+        seg.className = "cp-seg";
+        const buttons = {};
+        ["learning", "known"].forEach((s) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "cp-seg-btn " + s;
+          b.textContent = s === "learning" ? "Learning" : "Known";
+          b.addEventListener("click", () => {
+            const next = chapterStatus(ch.id) === s ? "none" : s;   // click active → clear
+            setChapterStatus(ch.id, next);                          // syncs + re-renders header
+            buttons.learning.classList.toggle("active", next === "learning");
+            buttons.known.classList.toggle("active", next === "known");
+            applyRowClass();
+            refreshSub();
+          });
+          buttons[s] = b;
+          seg.appendChild(b);
         });
-        row.appendChild(cb);
+        const cur = chapterStatus(ch.id);
+        buttons.learning.classList.toggle("active", cur === "learning");
+        buttons.known.classList.toggle("active", cur === "known");
+        applyRowClass();
+
         row.appendChild(idEl);
         row.appendChild(txt);
+        row.appendChild(seg);
         grp.appendChild(row);
       });
       list.appendChild(grp);
@@ -4428,6 +4486,7 @@ cloud = {
         if (remoteProgress && typeof remoteProgress === "object") {
           this._applying = true;
           Object.assign(profile.progress = profile.progress || {}, remoteProgress);
+          normalizeProgress();   // migrate any legacy {done} entries a device pushed
           saveProfile();
           this._applying = false;
         }
