@@ -76,8 +76,18 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   checked chapters "known" (non-destructive). SW v5→v6. Verified: node --check + logic test
   (migration, set/clear, seed-known-only vs cleared).
 
+- **Study log + notes (code done, awaiting UI-verify):** `profile.sessionLog` (array of
+  `{id,date,lesson,topics,problems,notes}`) + `profile.notes` (`{goal,currentStatus,
+  troubleAreas,strengths}` free text), both stringified in the cloud profile. New "Log"
+  header button → `openStudyLog()` modal: editable note textareas (save on blur) + a
+  session-log list you can add to / delete from on any device. Author-mode seeds both from
+  private/SYLLABUS.md (`parseSyllabusNotesAndLog` → `seedNotesFromSyllabus`, non-destructive;
+  session-log ids are STABLE "syl-N" so re-seeding on a 2nd author device dedupes via the
+  union-by-id cloud merge). Notes merge remote-wins-per-field; sessionLog unions by id.
+  SW v6→v7. Verified: node --check; parser vs real SYLLABUS.md (11 entries, 4 note sections,
+  no leaked header rows); dedup logic; REST roundtrip of sessionLog+notes.
+
 ## What's next (remaining 3c sweep, tasks tracked in the session task list)
-- Study log + trouble areas + strengths into `profile` (+ in-app view, author-mode seed).
 - Review queue (SRS concept queue) in-app.
 - Overlay+patch tree editing (insert/reorder/skip) + `treeMode` custom-mode escape hatch.
 - Versioned global-update review flow.
@@ -92,7 +102,7 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v6`.
+  users. Currently `v7`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit

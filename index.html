@@ -824,6 +824,22 @@
   .cp-seg-btn.known.active { background: var(--good); border-color: var(--good); color: #fff; }
   .syllabus-progress { cursor: pointer; }
 
+  /* Study log & notes modal */
+  .sl-note { margin-bottom: 12px; }
+  .sl-note label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 4px; }
+  .sl-note textarea { width: 100%; font: inherit; font-size: 13px; line-height: 1.4; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); resize: vertical; }
+  .sl-log-head { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; }
+  .sl-log-head h3 { font-size: 15px; font-weight: 600; }
+  .sl-form-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin: 8px 0; }
+  #slAddForm input, #slAddForm textarea { width: 100%; font: inherit; font-size: 13px; padding: 7px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+  .sl-entry { border-bottom: 1px solid var(--border); padding: 9px 2px; }
+  .sl-entry-meta { display: flex; align-items: baseline; gap: 10px; }
+  .sl-entry-date { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-muted); flex: 0 0 auto; }
+  .sl-entry-lesson { font-size: 13px; font-weight: 600; flex: 1 1 auto; }
+  .sl-entry-del { flex: 0 0 auto; border: none; background: transparent; color: var(--text-muted); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 4px; }
+  .sl-entry-del:hover { color: var(--bad, #dc2626); }
+  .sl-entry-body { font-size: 13px; color: var(--text); margin-top: 3px; line-height: 1.4; white-space: pre-wrap; }
+
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: var(--text); color: var(--bg);
@@ -867,6 +883,7 @@
   </div>
   <div class="topbar-actions">
     <span id="cloudStatus" class="cloud-status" title="Cloud sync status" hidden></span>
+    <button id="logBtn" class="ghost" title="Study log &amp; notes">Log</button>
     <button id="authBtn" class="ghost" title="Sign in with Google to sync across devices" hidden>Sign in</button>
     <button id="connectBtn" class="ghost" title="Connect to your study-tool folder so lessons + quizzes sync to JSON files on disk">Connect</button>
     <button id="exportBtn" class="ghost" title="Export flashcards as JSON">Export</button>
@@ -1018,11 +1035,13 @@ function loadProfile() {
       if (p && typeof p === "object") {
         p.lessonAnswers = p.lessonAnswers || {};
         p.progress = p.progress || {};   // { chapterId: { status } } — curriculum overlay
+        p.sessionLog = Array.isArray(p.sessionLog) ? p.sessionLog : [];
+        p.notes = (p.notes && typeof p.notes === "object") ? p.notes : {};  // {goal,currentStatus,troubleAreas,strengths}
         return p;
       }
     }
   } catch (e) { console.warn("Failed to load profile", e); }
-  return { schemaVersion: 1, lessonAnswers: {}, progress: {} };
+  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {} };
 }
 const profile = loadProfile();
 normalizeProgress();   // migrate legacy {done} overlay entries to {status}
@@ -1131,6 +1150,91 @@ function seedProgressFromSyllabus(items) {
       changed = true;
     }
   });
+  if (changed) saveProfile();
+}
+
+/* ===== study log & notes (Phase 3c) =====
+   profile.sessionLog: [{ id, date, lesson, topics, notes }] — a synced study history.
+   profile.notes: { goal, currentStatus, troubleAreas, strengths } — free-text markdown.
+   Both are authored either in-app or seeded (non-destructively) from private/SYLLABUS.md
+   in author mode. Surfaced via the "Log" header button on every device. */
+const NOTE_FIELDS = [
+  { key: "currentStatus", label: "Current status" },
+  { key: "goal",          label: "Goal" },
+  { key: "troubleAreas",  label: "Trouble areas" },
+  { key: "strengths",     label: "Strengths" },
+];
+
+function setNote(key, value) {
+  profile.notes = profile.notes || {};
+  profile.notes[key] = value;
+  saveProfile();
+}
+function addSessionEntry(entry) {
+  profile.sessionLog = profile.sessionLog || [];
+  profile.sessionLog.push({ id: uid(), ...entry });
+  saveProfile();
+}
+function deleteSessionEntry(id) {
+  profile.sessionLog = (profile.sessionLog || []).filter((e) => e.id !== id);
+  saveProfile();
+}
+
+// Parse the Session Log table + prose sections (Goal / Current Status / Trouble Areas /
+// Strengths) from SYLLABUS.md. Returns { sessionLog, notes } for author-mode seeding.
+function parseSyllabusNotesAndLog(md) {
+  const lines = md.split("\n");
+  const notes = {};
+  const sectionMap = {
+    "Goal": "goal", "Current Status": "currentStatus",
+    "Trouble Areas": "troubleAreas", "Strengths": "strengths",
+  };
+  let curKey = null, buf = [];
+  const flush = () => { if (curKey) notes[curKey] = buf.join("\n").trim(); curKey = null; buf = []; };
+  for (const line of lines) {
+    const h2 = line.match(/^##\s+(.*?)\s*$/);
+    if (h2) {
+      flush();
+      const name = h2[1].replace(/[:*]/g, "").trim();
+      if (sectionMap[name]) curKey = sectionMap[name];
+      continue;
+    }
+    if (curKey) { if (line.trim() !== "---") buf.push(line); }
+  }
+  flush();
+
+  // Session Log table: rows "| Date | Lesson | Topics | Problems | Notes |".
+  // Seeded ids are STABLE ("syl-N" by row order) so re-seeding on another author-mode
+  // device produces the same ids and the cloud merge dedupes instead of duplicating.
+  const sessionLog = [];
+  let inLog = false;
+  for (const line of lines) {
+    const h2 = line.match(/^##\s+(.*)$/);
+    if (h2) { inLog = /Session Log/i.test(h2[1]); continue; }
+    if (!inLog) continue;
+    const t = line.trim();
+    if (!t.startsWith("|")) continue;
+    const cells = t.split("|").slice(1, -1).map((c) => c.trim());
+    if (cells.length < 5) continue;
+    if (/^-+$/.test(cells[0].replace(/\s/g, "")) || /^date$/i.test(cells[0])) continue;  // separator/header
+    sessionLog.push({ id: "syl-" + sessionLog.length, date: cells[0], lesson: cells[1], topics: cells[2], problems: cells[3], notes: cells[4] });
+  }
+  return { sessionLog, notes };
+}
+
+// Non-destructive seed: fill a notes field only if empty; seed the session log only if
+// it's currently empty (so in-app entries are never duplicated or clobbered).
+function seedNotesFromSyllabus(parsed) {
+  if (!parsed) return;
+  let changed = false;
+  profile.notes = profile.notes || {};
+  Object.keys(parsed.notes || {}).forEach((k) => {
+    if (!profile.notes[k] && parsed.notes[k]) { profile.notes[k] = parsed.notes[k]; changed = true; }
+  });
+  if ((!profile.sessionLog || !profile.sessionLog.length) && (parsed.sessionLog || []).length) {
+    profile.sessionLog = parsed.sessionLog;
+    changed = true;
+  }
   if (changed) saveProfile();
 }
 
@@ -1350,6 +1454,7 @@ const fsm = {
       const text = await (await sh.getFile()).text();
       fs.syllabusProgress = parseSyllabusChapters(text);
       seedProgressFromSyllabus(fs.syllabusProgress);
+      seedNotesFromSyllabus(parseSyllabusNotesAndLog(text));   // seed study log + notes (non-destructive)
     } catch (e) { /* no SYLLABUS.md — leave null */ }
     renderSyllabusProgress();
   },
@@ -1889,6 +1994,113 @@ function openCurriculumPanel() {
 
     refreshSub();
     bd.querySelector("#cpDone").addEventListener("click", () => backdrop.remove());
+  });
+}
+
+// "Log" header button → study log & notes. Editable free-text notes + a synced
+// session history you can add to from any device. Backed by profile.{notes,sessionLog}.
+function openStudyLog() {
+  const backdrop = modal(`
+    <h2>Study log &amp; notes</h2>
+    <div id="slNotes"></div>
+    <div class="sl-log-head">
+      <h3>Session log</h3>
+      <button class="ghost" id="slAdd">+ Add session</button>
+    </div>
+    <div id="slAddForm" hidden>
+      <div class="sl-form-grid">
+        <input id="slDate" placeholder="Date (e.g. 2026-07-17)">
+        <input id="slLesson" placeholder="Lesson / topic">
+      </div>
+      <textarea id="slSessNotes" rows="2" placeholder="What did you cover? How did it go?"></textarea>
+      <div class="modal-actions">
+        <button class="ghost" id="slCancel">Cancel</button>
+        <button class="primary" id="slSave">Save entry</button>
+      </div>
+    </div>
+    <div id="slLogList"></div>
+    <div class="modal-actions"><button class="primary" id="slDone">Done</button></div>
+  `, (bd) => {
+    // Editable notes fields
+    const notesWrap = bd.querySelector("#slNotes");
+    NOTE_FIELDS.forEach((f) => {
+      const field = document.createElement("div");
+      field.className = "sl-note";
+      const lab = document.createElement("label");
+      lab.textContent = f.label;
+      const ta = document.createElement("textarea");
+      ta.rows = 3;
+      ta.value = (profile.notes && profile.notes[f.key]) || "";
+      ta.placeholder = "—";
+      ta.addEventListener("blur", () => {
+        if (ta.value !== ((profile.notes && profile.notes[f.key]) || "")) setNote(f.key, ta.value);
+      });
+      field.appendChild(lab);
+      field.appendChild(ta);
+      notesWrap.appendChild(field);
+    });
+
+    // Session log list (newest first)
+    const listEl = bd.querySelector("#slLogList");
+    const renderLog = () => {
+      listEl.innerHTML = "";
+      const entries = (profile.sessionLog || []).slice().reverse();
+      if (!entries.length) {
+        const empty = document.createElement("p");
+        empty.className = "cp-sub";
+        empty.textContent = "No sessions logged yet.";
+        listEl.appendChild(empty);
+        return;
+      }
+      entries.forEach((e) => {
+        const row = document.createElement("div");
+        row.className = "sl-entry";
+        const meta = document.createElement("div");
+        meta.className = "sl-entry-meta";
+        const when = document.createElement("span");
+        when.className = "sl-entry-date";
+        when.textContent = e.date || "—";
+        const les = document.createElement("span");
+        les.className = "sl-entry-lesson";
+        les.textContent = e.lesson || "";
+        const del = document.createElement("button");
+        del.className = "sl-entry-del";
+        del.textContent = "×";
+        del.title = "Delete this entry";
+        del.addEventListener("click", () => {
+          if (confirm("Delete this session entry?")) { deleteSessionEntry(e.id); renderLog(); }
+        });
+        meta.appendChild(when); meta.appendChild(les); meta.appendChild(del);
+        row.appendChild(meta);
+        const bodyText = [e.topics, e.problems && e.problems !== "—" ? `Problems: ${e.problems}` : "", e.notes]
+          .filter(Boolean).join(" · ");
+        if (bodyText) {
+          const body = document.createElement("div");
+          body.className = "sl-entry-body";
+          body.textContent = bodyText;
+          row.appendChild(body);
+        }
+        listEl.appendChild(row);
+      });
+    };
+    renderLog();
+
+    // Add-entry form
+    const form = bd.querySelector("#slAddForm");
+    bd.querySelector("#slAdd").addEventListener("click", () => { form.hidden = !form.hidden; if (!form.hidden) bd.querySelector("#slDate").focus(); });
+    bd.querySelector("#slCancel").addEventListener("click", () => { form.hidden = true; });
+    bd.querySelector("#slSave").addEventListener("click", () => {
+      const date = bd.querySelector("#slDate").value.trim();
+      const lesson = bd.querySelector("#slLesson").value.trim();
+      const notes = bd.querySelector("#slSessNotes").value.trim();
+      if (!date && !lesson && !notes) { form.hidden = true; return; }
+      addSessionEntry({ date, lesson, topics: "", problems: "", notes });
+      bd.querySelector("#slDate").value = ""; bd.querySelector("#slLesson").value = ""; bd.querySelector("#slSessNotes").value = "";
+      form.hidden = true;
+      renderLog();
+    });
+
+    bd.querySelector("#slDone").addEventListener("click", () => backdrop.remove());
   });
 }
 
@@ -2639,6 +2851,7 @@ document.getElementById("editModeBtn").addEventListener("click", () => {
   renderCardsBody();
 });
 document.getElementById("syllabusProgress").addEventListener("click", openCurriculumPanel);
+document.getElementById("logBtn").addEventListener("click", openStudyLog);
 document.getElementById("addCatBtn").addEventListener("click", () => {
   const name = prompt("New category name:");
   if (!name) return;
@@ -4490,6 +4703,23 @@ cloud = {
           saveProfile();
           this._applying = false;
         }
+        // Merge free-text notes (remote wins per field) and the session log (union by id).
+        this._applying = true;
+        try {
+          const rn = typeof remote.notes === "string" ? JSON.parse(remote.notes) : (remote.notes || null);
+          if (rn && typeof rn === "object") profile.notes = Object.assign(profile.notes || {}, rn);
+        } catch (e) { console.warn("Bad remote notes:", e); }
+        try {
+          const rl = typeof remote.sessionLog === "string" ? JSON.parse(remote.sessionLog) : remote.sessionLog;
+          if (Array.isArray(rl)) {
+            const byId = {};
+            (profile.sessionLog || []).forEach((en) => { if (en && en.id) byId[en.id] = en; });
+            rl.forEach((en) => { if (en && en.id) byId[en.id] = en; });   // remote wins per id
+            profile.sessionLog = Object.values(byId);
+          }
+        } catch (e) { console.warn("Bad remote sessionLog:", e); }
+        saveProfile();
+        this._applying = false;
       }
       hydrateLessonAnswers();
       renderLessonBody();
@@ -4512,6 +4742,8 @@ cloud = {
       writerId: this.writerId,
       lessonAnswers: JSON.stringify(profile.lessonAnswers || {}),   // stringified: ids contain '.'
       progress: JSON.stringify(profile.progress || {}),             // stringified: chapter ids contain '.'
+      sessionLog: JSON.stringify(profile.sessionLog || []),         // stringified array
+      notes: JSON.stringify(profile.notes || {}),                   // stringified free-text notes
     }).catch((e) => console.warn("Profile push failed:", e));
   },
 
