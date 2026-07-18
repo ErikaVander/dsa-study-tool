@@ -823,6 +823,18 @@
   .cp-seg-btn.learning.active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
   .cp-seg-btn.known.active { background: var(--good); border-color: var(--good); color: #fff; }
   .syllabus-progress { cursor: pointer; }
+  .cp-titlebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+  .cp-tools { display: inline-flex; align-items: center; gap: 8px; }
+  .cp-mode-badge { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: #7c3aed; border: 1px solid #7c3aed; border-radius: 999px; padding: 2px 8px; }
+  .cp-row.hidden-ch { opacity: 0.45; }
+  .cp-row.hidden-ch .cp-row-txt { text-decoration: line-through; }
+  .cp-edit-tools { flex: 0 0 auto; display: inline-flex; gap: 2px; }
+  .cp-icon-btn { border: 1px solid transparent; background: transparent; color: var(--text-muted); width: 26px; height: 26px; border-radius: 5px; cursor: pointer; font-size: 13px; line-height: 1; }
+  .cp-icon-btn:hover { border-color: var(--border); color: var(--text); }
+  .cp-add-chapter { margin: 4px 0 2px; border: 1px dashed var(--border); background: transparent; color: var(--text-muted); font-size: 12px; padding: 5px 10px; border-radius: 5px; cursor: pointer; width: 100%; }
+  .cp-add-chapter:hover { border-color: var(--text-muted); color: var(--text); }
+  .cp-mode-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .cp-mode-actions .cp-sub { margin: 0; }
 
   /* Study log & notes modal */
   .sl-note { margin-bottom: 12px; }
@@ -1062,11 +1074,14 @@ function loadProfile() {
         p.notes = (p.notes && typeof p.notes === "object") ? p.notes : {};  // {goal,currentStatus,troubleAreas,strengths}
         p.reviewQueue = Array.isArray(p.reviewQueue) ? p.reviewQueue : [];  // SRS concept queue
         p.currentSession = Number.isFinite(p.currentSession) ? p.currentSession : 1;
+        p.treeOverlay = (p.treeOverlay && typeof p.treeOverlay === "object") ? p.treeOverlay : {};  // {added,hidden,renamed,order}
+        p.treeMode = p.treeMode === "custom" ? "custom" : "overlay";
+        p.customTree = (p.customTree && typeof p.customTree === "object") ? p.customTree : null;
         return p;
       }
     }
   } catch (e) { console.warn("Failed to load profile", e); }
-  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {}, reviewQueue: [], currentSession: 1 };
+  return { schemaVersion: 1, lessonAnswers: {}, progress: {}, sessionLog: [], notes: {}, reviewQueue: [], currentSession: 1, treeOverlay: {}, treeMode: "overlay", customTree: null };
 }
 const profile = loadProfile();
 normalizeProgress();   // migrate legacy {done} overlay entries to {status}
@@ -1126,13 +1141,45 @@ function chapterStatus(id) {
   return (e && e.status) || "none";
 }
 
-// Merge the global tree with the per-user overlay into the flat item list the
-// progress bar renders. Returns null if no curriculum is loaded (bar then falls
-// back to the SYLLABUS.md-derived list, for local author mode offline).
+/* ===== overlay+patch tree (Phase 3c) =====
+   The effective curriculum = global curriculum.json + the per-user STRUCTURAL overlay
+   profile.treeOverlay = { added:[{id,title,phaseId,afterId}], hidden:{id:true},
+   renamed:{id:title}, order:{phaseId:[ids]} }. If the user forks (treeMode==="custom"),
+   profile.customTree holds a standalone copy and the global tree is no longer merged. */
+// Base tree = custom snapshot (if forked) else global; the overlay applies on top in
+// BOTH modes. includeHidden keeps skipped chapters in the list (marked) for the editor.
+function resolveCurriculumPhases(includeHidden) {
+  const base = (profile.treeMode === "custom" && profile.customTree && Array.isArray(profile.customTree.phases))
+    ? profile.customTree.phases
+    : (curriculum && Array.isArray(curriculum.phases) ? curriculum.phases : null);
+  if (!base) return null;
+  const ov = profile.treeOverlay || {};
+  const hidden = ov.hidden || {}, renamed = ov.renamed || {}, added = ov.added || [], order = ov.order || {};
+  return base.map((ph) => {
+    let chapters = (ph.chapters || [])
+      .map((ch) => ({ id: ch.id, title: renamed[ch.id] || ch.title || ch.id, custom: false, hidden: !!hidden[ch.id] }));
+    (added || []).filter((a) => a.phaseId === ph.id).forEach((a) => {
+      const node = { id: a.id, title: renamed[a.id] || a.title || a.id, custom: true, hidden: !!hidden[a.id] };
+      const idx = a.afterId ? chapters.findIndex((c) => c.id === a.afterId) : -1;
+      if (idx >= 0) chapters.splice(idx + 1, 0, node); else chapters.push(node);
+    });
+    if (Array.isArray(order[ph.id]) && order[ph.id].length) {
+      const pos = {}; order[ph.id].forEach((id, i) => { pos[id] = i; });
+      chapters.sort((a, b) => (pos[a.id] ?? 999) - (pos[b.id] ?? 999));
+    }
+    if (!includeHidden) chapters = chapters.filter((c) => !c.hidden);
+    return { id: ph.id, phase: ph.phase, title: ph.title, chapters };
+  });
+}
+
+// Merge the effective tree with the per-user MASTERY overlay into the flat item list the
+// progress bar renders. Returns null if no curriculum is loaded (bar then falls back to
+// the SYLLABUS.md-derived list, for local author mode offline).
 function buildCurriculumItems() {
-  if (!curriculum || !Array.isArray(curriculum.phases)) return null;
+  const phases = resolveCurriculumPhases();
+  if (!phases) return null;
   const items = [];
-  curriculum.phases.forEach((ph) => {
+  phases.forEach((ph) => {
     (ph.chapters || []).forEach((ch, i) => {
       const status = chapterStatus(ch.id);
       items.push({
@@ -1146,6 +1193,69 @@ function buildCurriculumItems() {
     });
   });
   return items;
+}
+
+/* ----- structural overlay mutators (all sync via saveProfile) ----- */
+function ensureOverlay() {
+  const ov = profile.treeOverlay = profile.treeOverlay || {};
+  ov.added = ov.added || []; ov.hidden = ov.hidden || {}; ov.renamed = ov.renamed || {}; ov.order = ov.order || {};
+  return ov;
+}
+function addCustomChapter(phaseId, afterId, title) {
+  if (!phaseId || !title) return;
+  const ov = ensureOverlay();
+  ov.added.push({ id: "cust-" + uid(), title: title, phaseId, afterId: afterId || null });
+  saveProfile(); renderSyllabusProgress();
+}
+function deleteCustomChapter(id) {
+  const ov = ensureOverlay();
+  ov.added = ov.added.filter((a) => a.id !== id);
+  delete ov.renamed[id];
+  Object.keys(ov.order).forEach((p) => { ov.order[p] = (ov.order[p] || []).filter((x) => x !== id); });
+  saveProfile(); renderSyllabusProgress();
+}
+function setChapterHidden(id, hidden) {
+  const ov = ensureOverlay();
+  if (hidden) ov.hidden[id] = true; else delete ov.hidden[id];
+  saveProfile(); renderSyllabusProgress();
+}
+function renameChapter(id, title) {
+  const ov = ensureOverlay();
+  if (title && title.trim()) ov.renamed[id] = title.trim(); else delete ov.renamed[id];
+  saveProfile(); renderSyllabusProgress();
+}
+// Move a chapter up/down within its phase by writing an explicit order for that phase.
+function moveChapter(phaseId, id, dir) {
+  const phases = resolveCurriculumPhases(true);
+  const ph = (phases || []).find((p) => p.id === phaseId);
+  if (!ph) return;
+  const ids = ph.chapters.map((c) => c.id);
+  const i = ids.indexOf(id), j = i + dir;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  ids.splice(i, 1); ids.splice(j, 0, id);
+  const ov = ensureOverlay();
+  ov.order[phaseId] = ids;
+  saveProfile(); renderSyllabusProgress();
+}
+// Fork to a standalone custom tree: snapshot the current resolved tree, then clear the
+// overlay (its effect is now baked into customTree). Stops merging global for structure.
+function forkCurriculumToCustom() {
+  const phases = resolveCurriculumPhases();   // hidden already dropped → baked out
+  if (!phases) return;
+  profile.customTree = { phases: phases.map((ph) => ({
+    id: ph.id, phase: ph.phase, title: ph.title,
+    chapters: (ph.chapters || []).map((c) => ({ id: c.id, title: c.title })),
+  })) };
+  profile.treeOverlay = {};   // baked into the snapshot; start fresh on top of it
+  profile.treeMode = "custom";
+  saveProfile(); renderSyllabusProgress();
+}
+// Discard customizations and return to the standard global curriculum.
+function revertCurriculumToStandard() {
+  profile.treeMode = "overlay";
+  profile.customTree = null;
+  profile.treeOverlay = {};
+  saveProfile(); renderSyllabusProgress();
 }
 
 // Set a chapter's mastery status in the per-user overlay (syncs via saveProfile).
@@ -2022,88 +2132,149 @@ function renderSyllabusProgress() {
   label.hidden = false;
 }
 
-// Click the header progress bar → panel of phases/chapters, each with a Learning/Known
-// control. Setting a status writes to the per-user overlay (profile.progress), synced
-// to every device. Clicking the active status again clears it back to none.
+// Click the header progress bar → panel of phases/chapters. Default view: a Learning/Known
+// control per chapter (mastery overlay). "Edit structure" reveals add/rename/hide/reorder
+// controls (structural overlay) + a Customize-fully / Revert-to-standard mode switch.
 function openCurriculumPanel() {
-  if (!curriculum || !Array.isArray(curriculum.phases) || !curriculum.phases.length) {
-    toast("Curriculum still loading…");
-    return;
-  }
+  if (!resolveCurriculumPhases()) { toast("Curriculum still loading…"); return; }
+  let editing = false;
   const backdrop = modal(`
-    <h2>Curriculum progress</h2>
+    <div class="cp-titlebar">
+      <h2>Curriculum</h2>
+      <div class="cp-tools">
+        <span class="cp-mode-badge" id="cpMode" hidden>Custom</span>
+        <button class="ghost" id="cpEdit">Edit structure</button>
+      </div>
+    </div>
     <p class="cp-sub" id="cpSub"></p>
     <div id="cpList"></div>
+    <div class="cp-mode-actions" id="cpModeActions"></div>
     <div class="modal-actions"><button class="primary" id="cpDone">Done</button></div>
   `, (bd) => {
     const list = bd.querySelector("#cpList");
     const sub = bd.querySelector("#cpSub");
+    const modeBadge = bd.querySelector("#cpMode");
+    const modeActions = bd.querySelector("#cpModeActions");
+    const editBtn = bd.querySelector("#cpEdit");
+
     const refreshSub = () => {
-      let total = 0, known = 0, learning = 0;
-      curriculum.phases.forEach((ph) => (ph.chapters || []).forEach((ch) => {
-        total++;
-        const s = chapterStatus(ch.id);
-        if (s === "known") known++; else if (s === "learning") learning++;
-      }));
+      const items = buildCurriculumItems() || [];
+      const total = items.length;
+      const known = items.filter((x) => x.status === "known").length;
+      const learning = items.filter((x) => x.status === "learning").length;
       const pct = total ? Math.round((known / total) * 100) : 0;
       sub.textContent = `${known} of ${total} known · ${pct}%` + (learning ? ` · ${learning} learning` : "");
     };
 
-    curriculum.phases.forEach((ph) => {
-      const grp = document.createElement("div");
-      grp.className = "cp-phase";
-      const head = document.createElement("div");
-      head.className = "cp-phase-head";
-      head.textContent = `${ph.phase ? ph.phase + ": " : ""}${ph.title || ""}`;
-      grp.appendChild(head);
+    const render = () => {
+      list.innerHTML = "";
+      modeBadge.hidden = profile.treeMode !== "custom";
+      editBtn.textContent = editing ? "Done editing" : "Edit structure";
+      const phases = resolveCurriculumPhases(editing) || [];   // include hidden while editing
+      phases.forEach((ph) => {
+        const grp = document.createElement("div");
+        grp.className = "cp-phase";
+        const head = document.createElement("div");
+        head.className = "cp-phase-head";
+        head.textContent = `${ph.phase ? ph.phase + ": " : ""}${ph.title || ""}`;
+        grp.appendChild(head);
 
-      (ph.chapters || []).forEach((ch) => {
-        const row = document.createElement("div");
-        const applyRowClass = () => {
+        ph.chapters.forEach((ch, idx) => {
+          const row = document.createElement("div");
           const s = chapterStatus(ch.id);
-          row.className = "cp-row" + (s === "known" ? " known" : s === "learning" ? " learning" : "");
-        };
-        const idEl = document.createElement("span");
-        idEl.className = "cp-row-id";
-        idEl.textContent = ch.id;
-        const txt = document.createElement("span");
-        txt.className = "cp-row-txt";
-        txt.textContent = ch.title || "";
+          row.className = "cp-row" + (ch.hidden ? " hidden-ch" : s === "known" ? " known" : s === "learning" ? " learning" : "");
+          const idEl = document.createElement("span");
+          idEl.className = "cp-row-id";
+          idEl.textContent = ch.custom ? "＋" : ch.id;
+          const txt = document.createElement("span");
+          txt.className = "cp-row-txt";
+          txt.textContent = ch.title || "";
+          row.appendChild(idEl);
+          row.appendChild(txt);
 
-        const seg = document.createElement("div");
-        seg.className = "cp-seg";
-        const buttons = {};
-        ["learning", "known"].forEach((s) => {
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "cp-seg-btn " + s;
-          b.textContent = s === "learning" ? "Learning" : "Known";
-          b.addEventListener("click", () => {
-            const next = chapterStatus(ch.id) === s ? "none" : s;   // click active → clear
-            setChapterStatus(ch.id, next);                          // syncs + re-renders header
-            buttons.learning.classList.toggle("active", next === "learning");
-            buttons.known.classList.toggle("active", next === "known");
-            applyRowClass();
-            refreshSub();
-          });
-          buttons[s] = b;
-          seg.appendChild(b);
+          if (!editing) {
+            const seg = document.createElement("div");
+            seg.className = "cp-seg";
+            ["learning", "known"].forEach((st) => {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.className = "cp-seg-btn " + st + (s === st ? " active" : "");
+              b.textContent = st === "learning" ? "Learning" : "Known";
+              b.addEventListener("click", () => {
+                setChapterStatus(ch.id, chapterStatus(ch.id) === st ? "none" : st);
+                render(); refreshSub();
+              });
+              seg.appendChild(b);
+            });
+            row.appendChild(seg);
+          } else {
+            const tools = document.createElement("div");
+            tools.className = "cp-edit-tools";
+            const mk = (label, title, fn) => {
+              const b = document.createElement("button");
+              b.className = "cp-icon-btn"; b.textContent = label; b.title = title;
+              b.addEventListener("click", fn);
+              return b;
+            };
+            tools.appendChild(mk("↑", "Move up", () => { moveChapter(ph.id, ch.id, -1); render(); }));
+            tools.appendChild(mk("↓", "Move down", () => { moveChapter(ph.id, ch.id, +1); render(); }));
+            tools.appendChild(mk("✎", "Rename", () => {
+              const t = prompt("Chapter title:", ch.title || ""); if (t !== null) { renameChapter(ch.id, t); render(); }
+            }));
+            tools.appendChild(mk(ch.hidden ? "＋" : "⦸", ch.hidden ? "Unhide" : "Skip / hide", () => { setChapterHidden(ch.id, !ch.hidden); render(); refreshSub(); }));
+            if (ch.custom) tools.appendChild(mk("🗑", "Delete custom chapter", () => {
+              if (confirm("Delete this custom chapter?")) { deleteCustomChapter(ch.id); render(); refreshSub(); }
+            }));
+            row.appendChild(tools);
+          }
+          grp.appendChild(row);
         });
-        const cur = chapterStatus(ch.id);
-        buttons.learning.classList.toggle("active", cur === "learning");
-        buttons.known.classList.toggle("active", cur === "known");
-        applyRowClass();
 
-        row.appendChild(idEl);
-        row.appendChild(txt);
-        row.appendChild(seg);
-        grp.appendChild(row);
+        if (editing) {
+          const addBtn = document.createElement("button");
+          addBtn.className = "cp-add-chapter";
+          addBtn.textContent = "+ Add chapter";
+          addBtn.addEventListener("click", () => {
+            const t = prompt("New chapter title:"); if (!t) return;
+            const last = ph.chapters[ph.chapters.length - 1];
+            addCustomChapter(ph.id, last ? last.id : null, t);
+            render(); refreshSub();
+          });
+          grp.appendChild(addBtn);
+        }
+        list.appendChild(grp);
       });
-      list.appendChild(grp);
-    });
 
-    refreshSub();
+      // Mode switch (fork / revert)
+      modeActions.innerHTML = "";
+      if (editing) {
+        if (profile.treeMode === "custom") {
+          const b = document.createElement("button");
+          b.className = "ghost"; b.textContent = "Revert to standard curriculum";
+          b.addEventListener("click", () => {
+            if (confirm("Discard your customizations and return to the standard curriculum?")) { revertCurriculumToStandard(); render(); refreshSub(); }
+          });
+          modeActions.appendChild(b);
+        } else {
+          const note = document.createElement("span");
+          note.className = "cp-sub";
+          note.textContent = "Editing tweaks the standard curriculum. ";
+          const b = document.createElement("button");
+          b.className = "ghost"; b.textContent = "Customize fully";
+          b.title = "Snapshot your own copy so future updates to the standard curriculum won't change it";
+          b.addEventListener("click", () => {
+            if (confirm("Make your own standalone copy of the curriculum? Future updates to the standard curriculum won't affect it.")) { forkCurriculumToCustom(); render(); refreshSub(); }
+          });
+          modeActions.appendChild(note);
+          modeActions.appendChild(b);
+        }
+      }
+    };
+
+    editBtn.addEventListener("click", () => { editing = !editing; render(); });
     bd.querySelector("#cpDone").addEventListener("click", () => backdrop.remove());
+    render();
+    refreshSub();
   });
 }
 
@@ -4935,6 +5106,25 @@ cloud = {
         if (Number.isFinite(remote.currentSession)) {
           profile.currentSession = Math.max(profile.currentSession || 1, remote.currentSession);
         }
+        // Structural curriculum overlay: merge sub-objects (added unioned by id).
+        try {
+          const ro = typeof remote.treeOverlay === "string" ? JSON.parse(remote.treeOverlay) : remote.treeOverlay;
+          if (ro && typeof ro === "object") {
+            const lov = ensureOverlay();
+            const byId = {};
+            (lov.added || []).forEach((a) => { if (a && a.id) byId[a.id] = a; });
+            (ro.added || []).forEach((a) => { if (a && a.id) byId[a.id] = a; });
+            lov.added = Object.values(byId);
+            Object.assign(lov.hidden, ro.hidden || {});
+            Object.assign(lov.renamed, ro.renamed || {});
+            Object.assign(lov.order, ro.order || {});
+          }
+        } catch (e) { console.warn("Bad remote treeOverlay:", e); }
+        if (remote.treeMode === "custom" || remote.treeMode === "overlay") profile.treeMode = remote.treeMode;
+        try {
+          const ct = typeof remote.customTree === "string" ? JSON.parse(remote.customTree) : remote.customTree;
+          if (ct && typeof ct === "object") profile.customTree = ct;
+        } catch (e) { console.warn("Bad remote customTree:", e); }
         saveProfile();
         this._applying = false;
       }
@@ -4963,6 +5153,9 @@ cloud = {
       notes: JSON.stringify(profile.notes || {}),                   // stringified free-text notes
       reviewQueue: JSON.stringify(profile.reviewQueue || []),       // stringified SRS queue
       currentSession: profile.currentSession || 1,
+      treeOverlay: JSON.stringify(profile.treeOverlay || {}),       // structural curriculum overlay
+      treeMode: profile.treeMode || "overlay",
+      customTree: JSON.stringify(profile.customTree || null),       // standalone tree when forked
     }).catch((e) => console.warn("Profile push failed:", e));
   },
 

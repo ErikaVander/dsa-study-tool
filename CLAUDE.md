@@ -98,9 +98,21 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   SYLLABUS.md (45 items, currentSession→11); SRS transitions (2→4, 8→16, 16 cap, struggle→1);
   REST roundtrip. NOTE: this is distinct from the flashcard `state.reviewQueue` (card-id queue).
 
+- **Overlay+patch tree editing + custom mode (code done, awaiting UI-verify):** the effective
+  curriculum = base tree + `profile.treeOverlay` `{added:[{id,title,phaseId,afterId}], hidden,
+  renamed, order:{phaseId:[ids]}}`, resolved by `resolveCurriculumPhases(includeHidden)`.
+  `buildCurriculumItems()` renders from it (hidden filtered out). Curriculum panel gained an
+  "Edit structure" toggle: per-chapter move ↑/↓, rename, skip/hide, delete-custom, and
+  "+ Add chapter" per phase. Mode switch: "Customize fully" (`forkCurriculumToCustom` snapshots
+  the resolved tree into `profile.customTree`, clears the overlay, sets `treeMode:"custom"` so
+  global updates no longer merge) / "Revert to standard" (`revertCurriculumToStandard` clears
+  both). Overlay applies on top of the custom base too, so all edit ops share one code path.
+  Cloud: treeOverlay (added unioned by id, sub-objects merged) + treeMode + customTree, all
+  stringified. SW v8→v9. Verified: node --check; full logic test (add/hide/rename/reorder,
+  fork bakes+clears, edit-in-custom, revert restores 3-chapter base); REST roundtrip.
+
 ## What's next (remaining 3c sweep, tasks tracked in the session task list)
-- Overlay+patch tree editing (insert/reorder/skip) + `treeMode` custom-mode escape hatch.
-- Versioned global-update review flow.
+- Versioned global-update review flow (last 3c item).
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
   Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
   Phase 8 email/newsletter.
@@ -112,7 +124,7 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v8`.
+  users. Currently `v9`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit
