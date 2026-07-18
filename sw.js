@@ -2,7 +2,7 @@
    Strategy: stale-while-revalidate for same-origin GETs (instant load from cache,
    refreshed in the background), network-first for cross-origin (e.g. the Pyodide CDN).
    Bump VERSION to force clients onto a new cache. */
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE = `dsa-study-${VERSION}`;
 
 // App shell precached on install. Content (lessons/quizzes/decks) is cached on first fetch.
@@ -11,6 +11,7 @@ const CORE = [
   "index.html",
   "manifest.webmanifest",
   "manifest.json",
+  "curriculum.json",
   "icons/icon.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",

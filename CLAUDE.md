@@ -45,14 +45,30 @@ phone after reload). SW bumped v3→v4. (Deploy gotcha hit once: the Pages build
 7cfccea hung ~15 min then errored — GitHub-side, not the code; `gh api -X POST
 repos/.../pages/builds` requeued it and it built. Watch for stuck Pages builds.)
 
+**Phase 3 Stage 3b — live progress bar from global tree + per-user overlay (code done,
+awaiting user UI-verify):** curriculum skeleton (structure only, 7 phases / 61 chapters)
+extracted into repo-committed **`curriculum.json`** (regenerate from private/SYLLABUS.md
+when chapters change — same spirit as gen_manifest). Per-user completion is the overlay
+`profile.progress[chapterId] = {done}`, stored stringified in the cloud profile (chapter
+ids contain '.'). Progress bar now renders from `buildCurriculumItems()` (global tree +
+overlay merged) so it works on EVERY device — the old bar read SYLLABUS.md, which isn't
+deployed. Author-mode bridge: connecting the local folder parses SYLLABUS.md (now found in
+`private/`, with root fallback) and folds checkbox state into the synced overlay via
+`seedProgressFromSyllabus()` (NON-destructive — seeds only chapters absent from the
+overlay, so it migrates initial state once but never clobbers an in-app toggle).
+**In-app toggle (folded in from 3c per user request):** clicking the header progress bar
+opens `openCurriculumPanel()` — a modal of phases/chapters with checkboxes; toggling calls
+`setChapterDone()` → overlay → syncs to every device incl. phone (no author mode / no
+SYLLABUS.md needed). This is now the primary way to set progress; SYLLABUS.md is just the
+one-time seed + notes. `curriculum.json` added to SW precache; SW bumped v4→v5.
+Verified: node --check; curriculum.json structure-only; merge logic (Erika's 1.1–1.5 done
+maps correctly, 7 phase-start dots, no orphan ids); REST roundtrip of stringified progress;
+toggle-vs-reseed logic (re-seed does not revert a toggle). Interactive UI verify pending.
+
 ## What's next
-- **Phase 3 Stage 3b (progress profile + live bar):** move the curriculum tree
-  skeleton into the repo as global `curriculum.json`; store per-user completion /
-  known-unknown as an overlay in `profile`; render the progress bar from global-tree +
-  overlay (replaces the SYLLABUS.md bar, which can't work live — SYLLABUS.md is
-  gitignored/not deployed). Session log into `profile` too.
-- **Phase 3 Stage 3c (later):** overlay+patch tree editing, `treeMode` custom-mode
-  escape hatch, versioned global-update review flow.
+- **Phase 3 Stage 3c:** overlay+patch tree editing (insert/reorder/skip custom nodes),
+  `treeMode` custom-mode escape hatch, versioned global-update review flow. Session log +
+  known/unknown into `profile` too.
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
   Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
   Phase 8 email/newsletter.
@@ -64,7 +80,7 @@ repos/.../pages/builds` requeued it and it built. Watch for stuck Pages builds.)
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v4`.
+  users. Currently `v5`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit

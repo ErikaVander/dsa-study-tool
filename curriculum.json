@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "note": "Global curriculum skeleton (structure only \u2014 per-user completion lives in Firebase /users/$uid/profile.progress). Regenerate from SYLLABUS.md when chapters change.",
+  "phases": [
+    {
+      "id": "phase-1",
+      "phase": "Phase 1",
+      "title": "Data Structures & Algorithms",
+      "chapters": [
+        {
+          "id": "1.1",
+          "title": "Big O Notation & Complexity Analysis (time & space)"
+        },
+        {
+          "id": "1.2",
+          "title": "Arrays & Strings"
+        },
+        {
+          "id": "1.3",
+          "title": "Hash Maps & Sets"
+        },
+        {
+          "id": "1.3.5",
+          "title": "The `collections` module (Counter, defaultdict, deque) \u2014 syntax mini-lesson"
+        },
+        {
+          "id": "1.4",
+          "title": "Linked Lists (singly, doubly)"
+        },
+        {
+          "id": "1.5",
+          "title": "Stacks & Queues"
+        },
+        {
+          "id": "1.6",
+          "title": "Two Pointers & Sliding Window"
+        },
+        {
+          "id": "1.7",
+          "title": "Recursion & Call Stack"
+        },
+        {
+          "id": "1.8",
+          "title": "Sorting Algorithms (merge sort, quick sort, etc.)"
+        },
+        {
+          "id": "1.9",
+          "title": "Binary Search"
+        },
+        {
+          "id": "1.10",
+          "title": "Binary Trees & Traversals (BFS, DFS)"
+        },
+        {
+          "id": "1.11",
+          "title": "Binary Search Trees"
+        },
+        {
+          "id": "1.12",
+          "title": "Heaps & Priority Queues"
+        },
+        {
+          "id": "1.13",
+          "title": "Graph Representations & Traversals"
+        },
+        {
+          "id": "1.14",
+          "title": "Shortest Path (Dijkstra, BFS)"
+        },
+        {
+          "id": "1.15",
+          "title": "Topological Sort & Union Find"
+        },
+        {
+          "id": "1.16",
+          "title": "Bit Manipulation (AND, OR, XOR, shifting)"
+        },
+        {
+          "id": "1.17",
+          "title": "Math Patterns (modular arithmetic, primes, GCD)"
+        },
+        {
+          "id": "1.18",
+          "title": "Dynamic Programming \u2014 1D"
+        },
+        {
+          "id": "1.19",
+          "title": "Dynamic Programming \u2014 2D & Advanced"
+        },
+        {
+          "id": "1.20",
+          "title": "Greedy Algorithms"
+        },
+        {
+          "id": "1.21",
+          "title": "Backtracking"
+        },
+        {
+          "id": "1.22",
+          "title": "Tries & Advanced Data Structures"
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "phase": "Phase 2",
+      "title": "Python Deep Dive",
+      "chapters": [
+        {
+          "id": "2.1",
+          "title": "Python Object Model (everything is an object, references vs values)"
+        },
+        {
+          "id": "2.2",
+          "title": "Built-in Data Structures Under the Hood (list, dict, set internals)"
+        },
+        {
+          "id": "2.3",
+          "title": "Generators, Iterators & Comprehensions"
+        },
+        {
+          "id": "2.4",
+          "title": "Decorators, Closures & First-Class Functions"
+        },
+        {
+          "id": "2.5",
+          "title": "Common Python Gotchas Interviewers Test (mutability, scoping, default args)"
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "phase": "Phase 3",
+      "title": "Hardware, Languages & How They Interact",
+      "chapters": [
+        {
+          "id": "3.1",
+          "title": "How Computers Work (CPU, memory hierarchy, cache)"
+        },
+        {
+          "id": "3.2",
+          "title": "How Code Executes (compilation, interpretation, runtime)"
+        },
+        {
+          "id": "3.3",
+          "title": "Memory Management (stack vs heap, garbage collection)"
+        },
+        {
+          "id": "3.4",
+          "title": "Concurrency & Parallelism (threads, processes, async)"
+        },
+        {
+          "id": "3.5",
+          "title": "Networking Fundamentals (TCP/IP, HTTP, DNS)"
+        },
+        {
+          "id": "3.6",
+          "title": "Operating Systems Basics (processes, scheduling, I/O)"
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "phase": "Phase 4",
+      "title": "Development Lifecycle",
+      "chapters": [
+        {
+          "id": "4.1",
+          "title": "Version Control & Git Workflows"
+        },
+        {
+          "id": "4.2",
+          "title": "Testing Strategies (unit, integration, e2e)"
+        },
+        {
+          "id": "4.3",
+          "title": "CI/CD Pipelines"
+        },
+        {
+          "id": "4.4",
+          "title": "Code Review & Collaboration"
+        },
+        {
+          "id": "4.5",
+          "title": "Debugging & Profiling"
+        },
+        {
+          "id": "4.6",
+          "title": "Agile / Software Development Lifecycle"
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "phase": "Phase 5",
+      "title": "Object-Oriented Design",
+      "chapters": [
+        {
+          "id": "5.1",
+          "title": "OOP Principles (encapsulation, inheritance, polymorphism, abstraction)"
+        },
+        {
+          "id": "5.2",
+          "title": "SOLID Principles"
+        },
+        {
+          "id": "5.3",
+          "title": "Common Design Patterns (factory, observer, strategy, singleton)"
+        },
+        {
+          "id": "5.4",
+          "title": "Practice: Design a Parking Lot"
+        },
+        {
+          "id": "5.5",
+          "title": "Practice: Design a Deck of Cards"
+        },
+        {
+          "id": "5.6",
+          "title": "Practice: Design a Library Management System"
+        }
+      ]
+    },
+    {
+      "id": "phase-6",
+      "phase": "Phase 6",
+      "title": "System Design",
+      "chapters": [
+        {
+          "id": "6.1",
+          "title": "System Design Framework & How to Approach Problems"
+        },
+        {
+          "id": "6.2",
+          "title": "Scaling Fundamentals (horizontal vs vertical, load balancing)"
+        },
+        {
+          "id": "6.3",
+          "title": "Databases (SQL vs NoSQL, indexing, sharding)"
+        },
+        {
+          "id": "6.4",
+          "title": "Caching Strategies (Redis, CDN, application-level)"
+        },
+        {
+          "id": "6.5",
+          "title": "Message Queues & Event-Driven Architecture"
+        },
+        {
+          "id": "6.6",
+          "title": "API Design (REST, GraphQL, gRPC)"
+        },
+        {
+          "id": "6.7",
+          "title": "Microservices vs Monoliths"
+        },
+        {
+          "id": "6.8",
+          "title": "Practice: Design a URL Shortener"
+        },
+        {
+          "id": "6.9",
+          "title": "Practice: Design a Chat System"
+        },
+        {
+          "id": "6.10",
+          "title": "Practice: Design a News Feed"
+        }
+      ]
+    },
+    {
+      "id": "phase-7",
+      "phase": "Phase 7",
+      "title": "Behavioral Interview Prep",
+      "chapters": [
+        {
+          "id": "7.1",
+          "title": "The STAR Method & Structuring Answers"
+        },
+        {
+          "id": "7.2",
+          "title": "Crafting Your Story (career narrative, why this role)"
+        },
+        {
+          "id": "7.3",
+          "title": "Leadership & Conflict Resolution Questions"
+        },
+        {
+          "id": "7.4",
+          "title": "Technical Decision-Making Stories"
+        },
+        {
+          "id": "7.5",
+          "title": "Practice: Mock Behavioral Round"
+        }
+      ]
+    }
+  ]
+}

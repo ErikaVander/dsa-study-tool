@@ -807,6 +807,17 @@
   .field { margin-bottom: 12px; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
+  /* Curriculum progress panel (click the header progress bar) */
+  .cp-sub { font-size: 13px; color: var(--text-muted); margin: -8px 0 14px; }
+  .cp-phase { margin-bottom: 14px; }
+  .cp-phase-head { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 4px; }
+  .cp-row { display: flex; align-items: flex-start; gap: 9px; padding: 5px 4px; font-size: 14px; cursor: pointer; border-radius: 5px; }
+  .cp-row:hover { background: rgba(127,127,127,0.10); }
+  .cp-row input { margin: 2px 0 0; flex: 0 0 auto; cursor: pointer; }
+  .cp-row-id { color: var(--text-muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; min-width: 34px; }
+  .cp-row.done .cp-row-txt { color: var(--text-muted); text-decoration: line-through; }
+  .syllabus-progress { cursor: pointer; }
+
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     background: var(--text); color: var(--bg);
@@ -844,7 +855,7 @@
     <button class="tab" data-tab="lessons">Lessons</button>
     <button class="tab" data-tab="plan">Plan</button>
   </nav>
-  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress (from SYLLABUS.md)">
+  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress">
     <div class="sp-dots" id="spDots" hidden></div>
     <span class="sp-label" id="spLabel" hidden></span>
   </div>
@@ -998,10 +1009,14 @@ function loadProfile() {
     const raw = localStorage.getItem(PROFILE_KEY);
     if (raw) {
       const p = JSON.parse(raw);
-      if (p && typeof p === "object") { p.lessonAnswers = p.lessonAnswers || {}; return p; }
+      if (p && typeof p === "object") {
+        p.lessonAnswers = p.lessonAnswers || {};
+        p.progress = p.progress || {};   // { chapterId: { done: bool } } — curriculum overlay
+        return p;
+      }
     }
   } catch (e) { console.warn("Failed to load profile", e); }
-  return { schemaVersion: 1, lessonAnswers: {} };
+  return { schemaVersion: 1, lessonAnswers: {}, progress: {} };
 }
 const profile = loadProfile();
 function saveProfile() {
@@ -1025,6 +1040,67 @@ function hydrateLessonAnswers() {
       if (ex && Object.prototype.hasOwnProperty.call(byEx, ex.id)) ex.userAnswer = byEx[ex.id];
     });
   });
+}
+
+/* ===== curriculum (Phase 3b) =====
+   Global tree skeleton (structure only) fetched from repo-committed curriculum.json.
+   Per-user completion is the overlay in profile.progress[chapterId] = {done}. The
+   progress bar is rendered from tree + overlay merged, so it works on every device
+   (the old bar read SYLLABUS.md, which is gitignored and never deployed). */
+let curriculum = null;
+async function loadCurriculum() {
+  try {
+    const res = await fetch("curriculum.json", { cache: "no-cache" });
+    if (res.ok) curriculum = await res.json();
+  } catch (e) { console.warn("No curriculum.json — progress bar falls back to SYLLABUS.md if present:", e); }
+}
+
+// Merge the global tree with the per-user overlay into the flat item list the
+// progress bar renders. Returns null if no curriculum is loaded (bar then falls
+// back to the SYLLABUS.md-derived list, for local author mode offline).
+function buildCurriculumItems() {
+  if (!curriculum || !Array.isArray(curriculum.phases)) return null;
+  const prog = profile.progress || {};
+  const items = [];
+  curriculum.phases.forEach((ph) => {
+    (ph.chapters || []).forEach((ch, i) => {
+      items.push({
+        id: ch.id,
+        done: !!(prog[ch.id] && prog[ch.id].done),
+        phase: ph.phase || ph.title || "",
+        title: ch.title || ch.id,
+        phaseStart: i === 0,
+      });
+    });
+  });
+  return items;
+}
+
+// Mark a chapter complete/incomplete in the per-user overlay (syncs via saveProfile).
+function setChapterDone(id, done) {
+  if (!id) return;
+  profile.progress = profile.progress || {};
+  profile.progress[id] = { done: !!done };
+  saveProfile();
+  renderSyllabusProgress();
+}
+
+// Author-mode bridge: fold SYLLABUS.md checkbox state (creator's editing surface,
+// local folder only) into the synced per-user overlay so it reaches all devices.
+// Non-destructive: seeds ONLY chapters not already in the overlay, so it migrates
+// initial state once but never clobbers an in-app toggle (the overlay is authoritative).
+function seedProgressFromSyllabus(items) {
+  if (!Array.isArray(items)) return;
+  profile.progress = profile.progress || {};
+  let changed = false;
+  items.forEach((it) => {
+    if (!it.id) return;
+    if (!Object.prototype.hasOwnProperty.call(profile.progress, it.id)) {
+      profile.progress[it.id] = { done: it.done };
+      changed = true;
+    }
+  });
+  if (changed) saveProfile();
 }
 
 // UI prefs (persisted separately so they stay machine-local on import)
@@ -1225,12 +1301,24 @@ const fsm = {
       }
     } catch (e) { console.warn("Quizzes dir error:", e); }
 
-    // Syllabus progress (Phase 1 checkboxes) — optional; bar hides if absent.
+    // Syllabus progress (author mode): SYLLABUS.md is the creator's local editing
+    // surface. Parse its checkboxes and fold them into the synced per-user overlay
+    // (profile.progress) so completion reaches all devices — the deployed bar renders
+    // from curriculum.json + that overlay, not from this file (which isn't deployed).
+    // SYLLABUS.md lives in private/ (personal data, gitignored); older layouts had it
+    // at the folder root. Try private/ first, then root.
     fs.syllabusProgress = null;
     try {
-      const sh = await fs.dirHandle.getFileHandle("SYLLABUS.md");
+      let sh;
+      try {
+        const priv = await fs.dirHandle.getDirectoryHandle("private");
+        sh = await priv.getFileHandle("SYLLABUS.md");
+      } catch (e) {
+        sh = await fs.dirHandle.getFileHandle("SYLLABUS.md");   // root fallback
+      }
       const text = await (await sh.getFile()).text();
       fs.syllabusProgress = parseSyllabusChapters(text);
+      seedProgressFromSyllabus(fs.syllabusProgress);
     } catch (e) { /* no SYLLABUS.md — leave null */ }
     renderSyllabusProgress();
   },
@@ -1639,7 +1727,15 @@ function parseSyllabusChapters(md) {
     if (!curPhase) continue;
     const m = line.match(/^\s*-\s+\[([ xX])\]\s*(.*)$/);
     if (m) {
-      items.push({ done: m[1].toLowerCase() === "x", phase: curPhase, title: (m[2] || "").trim(), phaseStart: firstInPhase });
+      const rest = (m[2] || "").trim();
+      const idm = rest.match(/^(\d+(?:\.\d+)*)\s+(.*)$/);   // split leading "1.3.5" id from title
+      items.push({
+        done: m[1].toLowerCase() === "x",
+        phase: curPhase,
+        id: idm ? idm[1] : null,
+        title: idm ? idm[2].trim() : rest,
+        phaseStart: firstInPhase,
+      });
       firstInPhase = false;
     }
   }
@@ -1649,7 +1745,9 @@ function parseSyllabusChapters(md) {
 function renderSyllabusProgress() {
   const dots = document.getElementById("spDots");
   const label = document.getElementById("spLabel");
-  const items = fs.syllabusProgress;
+  // Primary: global curriculum.json + per-user overlay (works on every device).
+  // Fallback: SYLLABUS.md-derived list (local author mode when curriculum.json absent).
+  const items = buildCurriculumItems() || fs.syllabusProgress;
   if (!items || !items.length) { dots.hidden = true; label.hidden = true; return; }
   const total = items.length;
   const done = items.filter(x => x.done).length;
@@ -1668,9 +1766,72 @@ function renderSyllabusProgress() {
 
   const pct = Math.round((done / total) * 100);
   label.textContent = `${done}/${total} · ${pct}%`;
-  document.getElementById("syllabusProgress").title = `Curriculum progress — ${done} of ${total} chapters complete (from SYLLABUS.md)`;
+  document.getElementById("syllabusProgress").title = `Curriculum progress — ${done} of ${total} chapters complete (click to update)`;
   dots.hidden = false;
   label.hidden = false;
+}
+
+// Click the header progress bar → panel of phases/chapters with checkboxes. Toggling
+// writes to the per-user overlay (profile.progress), which syncs to every device.
+function openCurriculumPanel() {
+  if (!curriculum || !Array.isArray(curriculum.phases) || !curriculum.phases.length) {
+    toast("Curriculum still loading…");
+    return;
+  }
+  const backdrop = modal(`
+    <h2>Curriculum progress</h2>
+    <p class="cp-sub" id="cpSub"></p>
+    <div id="cpList"></div>
+    <div class="modal-actions"><button class="primary" id="cpDone">Done</button></div>
+  `, (bd) => {
+    const list = bd.querySelector("#cpList");
+    const sub = bd.querySelector("#cpSub");
+    const prog = () => profile.progress || {};
+    const refreshSub = () => {
+      let total = 0, done = 0;
+      curriculum.phases.forEach((ph) => (ph.chapters || []).forEach((ch) => {
+        total++; if (prog()[ch.id] && prog()[ch.id].done) done++;
+      }));
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      sub.textContent = `${done} of ${total} chapters complete · ${pct}%`;
+    };
+
+    curriculum.phases.forEach((ph) => {
+      const grp = document.createElement("div");
+      grp.className = "cp-phase";
+      const head = document.createElement("div");
+      head.className = "cp-phase-head";
+      head.textContent = `${ph.phase ? ph.phase + ": " : ""}${ph.title || ""}`;
+      grp.appendChild(head);
+
+      (ph.chapters || []).forEach((ch) => {
+        const row = document.createElement("label");
+        row.className = "cp-row" + ((prog()[ch.id] && prog()[ch.id].done) ? " done" : "");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!(prog()[ch.id] && prog()[ch.id].done);
+        const idEl = document.createElement("span");
+        idEl.className = "cp-row-id";
+        idEl.textContent = ch.id;
+        const txt = document.createElement("span");
+        txt.className = "cp-row-txt";
+        txt.textContent = ch.title || "";
+        cb.addEventListener("change", () => {
+          setChapterDone(ch.id, cb.checked);   // updates overlay, saves, re-renders header bar
+          row.classList.toggle("done", cb.checked);
+          refreshSub();
+        });
+        row.appendChild(cb);
+        row.appendChild(idEl);
+        row.appendChild(txt);
+        grp.appendChild(row);
+      });
+      list.appendChild(grp);
+    });
+
+    refreshSub();
+    bd.querySelector("#cpDone").addEventListener("click", () => backdrop.remove());
+  });
 }
 
 function updateConnectionUI() {
@@ -2419,6 +2580,7 @@ document.getElementById("editModeBtn").addEventListener("click", () => {
   editMode = !editMode;
   renderCardsBody();
 });
+document.getElementById("syllabusProgress").addEventListener("click", openCurriculumPanel);
 document.getElementById("addCatBtn").addEventListener("click", () => {
   const name = prompt("New category name:");
   if (!name) return;
@@ -4256,9 +4418,23 @@ cloud = {
           saveProfile();          // persist merged result locally
           this._applying = false;
         }
+        // Merge the curriculum-progress overlay (also stringified; remote wins per chapter).
+        let remoteProgress = {};
+        try {
+          remoteProgress = typeof remote.progress === "string"
+            ? JSON.parse(remote.progress)
+            : (remote.progress || {});
+        } catch (e) { console.warn("Bad remote progress:", e); }
+        if (remoteProgress && typeof remoteProgress === "object") {
+          this._applying = true;
+          Object.assign(profile.progress = profile.progress || {}, remoteProgress);
+          saveProfile();
+          this._applying = false;
+        }
       }
       hydrateLessonAnswers();
       renderLessonBody();
+      renderSyllabusProgress();   // reflect the synced progress overlay
       this.pushProfile();       // seed a new doc, or push the merged union back up
     } catch (e) { console.warn("Profile load failed:", e); }
   },
@@ -4276,6 +4452,7 @@ cloud = {
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       writerId: this.writerId,
       lessonAnswers: JSON.stringify(profile.lessonAnswers || {}),   // stringified: ids contain '.'
+      progress: JSON.stringify(profile.progress || {}),             // stringified: chapter ids contain '.'
     }).catch((e) => console.warn("Profile push failed:", e));
   },
 
@@ -4330,6 +4507,7 @@ async function bootstrap() {
   // via the manifest so lessons/quizzes/flashcards work on every device.
   await fsm.tryReconnect();
   if (!fs.connected) await fsm.loadFromManifest();
+  await loadCurriculum();   // global curriculum tree for the progress bar (+ per-user overlay)
   updateConnectionUI();
 
   // Now that lessons/quizzes may have loaded from disk, pick defaults
@@ -4353,6 +4531,7 @@ async function bootstrap() {
   }
 
   hydrateLessonAnswers();   // apply locally-persisted lesson answers before first render
+  renderSyllabusProgress(); // now that curriculum.json + local overlay are loaded
   renderCategories();
   renderCardsBody();
   renderQuizzes();
