@@ -32,6 +32,24 @@ only Big O. To restore any moved file to the shipped set: move it back + `python
 tools/gen_manifest.py`. (`gen_manifest` globs `flashcards*.json`, so the seed deck is named to
 match; the personal deck was moved out so it's excluded.)
 
+## Adding content to a user's account (CANONICAL workflow — do NOT default to imports or the repo)
+Per-user content (lessons, quizzes, flashcards for a specific user) belongs in that user's
+Realtime DB, delivered by an **Admin SDK push** — NOT the public repo (that makes it global for
+everyone) and NOT manual in-app Import (defeats the whole per-user-Realtime point; the user
+explicitly does not want to hand-import files).
+- Author content as JSON, then push: lessons/quizzes → `/users/$uid/content` via
+  `tools/push-content.js`; flashcards → `/users/$uid/state` (merge cards+categories by id).
+- **Claude can run the push directly** if the user's `tools/service-account.json` (Admin key,
+  gitignored) is present locally and the user has OK'd it — the key is a local file the script
+  reads; Claude never views/prints/commits it. ALWAYS `--dry-run` first, the script backs up the
+  node, then do the real write. The user just reloads the app to see it. (If the key isn't
+  present, the user runs the script themselves.)
+- **NEVER** put per-user content in the repo, and **NEVER** tell the user to manually Import.
+- The service-account key is a local secret: never paste it into chat, never commit it, never
+  `cat`/print its contents. Handle it only as a file path the script reads.
+- Interview-prep content (2026-07-20) lives in `private/interview-prep/` (gitignored) pending
+  push to the user's account via this workflow.
+
 ## Architecture
 - Static app; lessons/quizzes/flashcards loaded via `fetch()` + `manifest.json`
   (regenerate with `python3 tools/gen_manifest.py` after adding/removing content).
