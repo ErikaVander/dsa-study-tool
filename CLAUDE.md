@@ -138,11 +138,37 @@ guarded against double-registering the auth listener when `bootstrap()` re-runs 
 (6) SRS review status string simplified. (7) `.cp-row.learning` CSS. Verified: node --check +
 union-merge logic test (reviewer's X/Y scenario: both survive; local-wins-on-conflict; null-safe).
 
+## Author-ahead ritual (Phase 4) — STANDING OPERATING INSTRUCTION
+At the END of every study session, Claude authors the NEXT session's material so it's
+ready before the user sits down (never a blank start). Keep the buffer exactly ONE lesson
+ahead of the next-to-study — don't jump further. Steps:
+1. **Retro** — ask what went well / what didn't / what to change; write it into the user's
+   profile via the app data (session log, notes, review queue) AND into private/SYLLABUS.md
+   (the author-mode source that seeds the cloud profile).
+2. Ask **once**: "Build your next lesson + quiz now?" (skip if already buffered).
+3. If yes → author the next lesson + its review quiz (+ any flashcards) immediately.
+   A pre-built lesson persists; if it later feels too advanced, leave it queued and author a
+   remedial recall quiz/lesson as a side-branch instead.
+4. **Standing consent** (ask once, then remember the preference): yes = author future
+   sessions seamlessly; no = author ahead but the user approves each write.
+**Hard rules when authoring:** (a) BEFORE writing, ask "do you already know <concept>?" — if
+yes, the lesson body is a syntax/idioms toolkit in COLLAPSIBLE sections, concept ≈ 0 (the
+user's gap is Python production, not concepts). (b) NEVER full-`Write` a lesson file — use
+targeted Edits; a full rewrite once clobbered saved answers. (c) Quiz questions need
+`explanation` (worked example w/ real values), `visual` (small ASCII), `cardBack`; code
+questions need `starter`/`tests`/`testSetup`. (d) Keep review quizzes SEPARATE (Quizzes tab).
+Details: memory `lesson-authoring`, `quiz-authoring`, `lesson-scope-known-concepts`,
+`flashcard-format`, `syntax-gap-not-concept-gap`.
+
+**Queue state (2026-07-20):** next-to-study = **1.3.5 collections** (already authored ahead
+at S10, ready: 10 body blocks + 3 exercises w/ tests, not yet studied). Next author-ahead
+target = **1.6 Two Pointers & Sliding Window**, to be written when 1.3.5 is completed (needs
+the "do you already know two-pointers?" answer first — it's a genuine algorithm topic).
+
 ## What's next
 - Phase 3 Stage 3c is CODE-COMPLETE + hardened; needs interactive UI-verify pass.
-- Phase 4 author-ahead session workflow; Phase 5 global-update review system;
-  Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
-  Phase 8 email/newsletter.
+- Phase 5 global-update review system (partly done in 3c); Phase 6 onboarding playbook
+  (so others can self-host); Phase 7 donations; Phase 8 email/newsletter.
 - Cleanup: purge throwaway anonymous users created during sign-in testing.
 
 ## Gotchas & conventions
