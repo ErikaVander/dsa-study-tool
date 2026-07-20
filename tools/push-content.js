@@ -1,107 +1,102 @@
 #!/usr/bin/env node
 /**
- * Push lesson/quiz CONTENT straight into a user's Realtime DB node (/users/<uid>/content),
- * using the Admin SDK (bypasses client auth rules). This is how a lesson gets onto YOUR
- * account without an in-app import — you author the JSON, run this, reload the app.
+ * Push content straight into a user's Realtime DB (Admin SDK) — no in-app import.
+ *   --flashcards <deck.json|dir>  → merged into /users/<uid>/state  (cards + categories by id)
+ *   --lessons    <file|dir>       → merged into /users/<uid>/content (lessons map by id)
+ *   --quizzes    <file|dir>       → merged into /users/<uid>/content (quizzes map by id)
  *
- * It MERGES: existing lessons/quizzes in your content node are preserved; a new item with the
- * same id overwrites that one item only. It also backs up your current content to a local file
- * before writing, and supports a dry run.
+ * Merges (never clobbers existing items), backs up the node first, and supports --dry-run.
+ * --uid is auto-detected if there's exactly one real (non-anonymous) account.
+ * The service-account key stays a local file (tools/service-account.json); never printed/committed.
  *
- * Setup: same service-account.json as tools/purge-anon-users.js (gitignored).
- *   cd tools && npm install firebase-admin    # if not already
- *
- * Usage:
- *   node tools/push-content.js --uid <YOUR_UID> --lessons ../private/interview-prep --dry-run
- *   node tools/push-content.js --uid <YOUR_UID> --lessons ../private/interview-prep/qa-fundamentals.json
- *   node tools/push-content.js --uid <YOUR_UID> --quizzes ../private/interview-prep/qa-quiz.json
- * Flags:
- *   --uid <uid>        REQUIRED. Your Firebase uid (Auth tab, or the console DB path).
- *   --lessons <path>   A lesson .json file, or a directory of them (any *.json not named *quiz*).
- *   --quizzes <path>   A quiz .json file, or a directory of them.
- *   --dry-run          Show what would change; write nothing.
- *
- * Find your uid: Firebase console -> Authentication -> your Google row -> User UID.
+ * Examples:
+ *   node tools/push-content.js --flashcards private/interview-prep/qa-flashcards.json --dry-run
+ *   node tools/push-content.js --lessons private/interview-prep/qa-fundamentals.json
  */
-
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+const { getDatabase, ServerValue } = require("firebase-admin/database");
 
 const argv = process.argv.slice(2);
-const getFlag = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
-const UID = getFlag("--uid");
-const LESSONS = getFlag("--lessons");
-const QUIZZES = getFlag("--quizzes");
+const flag = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : null; };
 const DRY = argv.includes("--dry-run");
+let UID = flag("--uid");
+const FLASH = flag("--flashcards"), LESSONS = flag("--lessons"), QUIZZES = flag("--quizzes");
+if (!FLASH && !LESSONS && !QUIZZES) { console.error("Nothing to push. Use --flashcards / --lessons / --quizzes."); process.exit(1); }
 
-if (!UID) { console.error("Missing --uid <YOUR_UID>. Find it in Firebase console -> Authentication."); process.exit(1); }
-if (!LESSONS && !QUIZZES) { console.error("Nothing to push. Pass --lessons and/or --quizzes."); process.exit(1); }
+const sa = require(path.join(__dirname, "service-account.json"));
+initializeApp({ credential: cert(sa), databaseURL: "https://dsa-study-tool-default-rtdb.firebaseio.com" });
+const db = getDatabase();
 
-const SERVICE_ACCOUNT = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, "service-account.json");
-const DATABASE_URL = "https://dsa-study-tool-default-rtdb.firebaseio.com";
-let serviceAccount;
-try { serviceAccount = require(SERVICE_ACCOUNT); }
-catch (e) { console.error(`Could not load service account at ${SERVICE_ACCOUNT}. See tools/purge-anon-users.js setup.`); process.exit(1); }
-
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount), databaseURL: DATABASE_URL });
-const db = admin.database();
-
-// Collect JSON files from a file-or-directory path. `kind` filters by filename for dirs.
 function collect(p, kind) {
   if (!p) return [];
   const full = path.resolve(p);
-  const stat = fs.statSync(full);
-  const files = stat.isDirectory()
+  const files = fs.statSync(full).isDirectory()
     ? fs.readdirSync(full).filter((f) => f.endsWith(".json")).map((f) => path.join(full, f))
     : [full];
   return files
-    .filter((f) => (kind === "quiz" ? /quiz/i.test(path.basename(f)) : !/quiz/i.test(path.basename(f))))
-    .map((f) => ({ file: f, data: JSON.parse(fs.readFileSync(f, "utf8")) }));
+    .filter((f) => (kind === "quiz" ? /quiz/i.test(path.basename(f)) : kind === "lesson" ? !/quiz/i.test(path.basename(f)) : true))
+    .map((f) => JSON.parse(fs.readFileSync(f, "utf8")));
 }
-
 const parseMap = (s) => { try { return typeof s === "string" ? JSON.parse(s) : (s || {}); } catch (e) { return {}; } };
+const byId = (arr) => { const m = {}; (arr || []).forEach((x) => { if (x && x.id) m[x.id] = x; }); return m; };
 
 (async () => {
-  const ref = db.ref(`users/${UID}/content`);
-  const remote = (await ref.once("value")).val() || {};
-  const lessons = parseMap(remote.lessons);
-  const quizzes = parseMap(remote.quizzes);
-  const before = { lessons: Object.keys(lessons).length, quizzes: Object.keys(quizzes).length };
+  if (!UID) {
+    const users = [];
+    let t; do { const r = await getAuth().listUsers(1000, t); users.push(...r.users); t = r.pageToken; } while (t);
+    const real = users.filter((u) => (u.providerData && u.providerData.length) || u.email);
+    if (real.length !== 1) { console.error(`Could not auto-pick uid (${real.length} real accounts). Pass --uid.`); process.exit(1); }
+    UID = real[0].uid;
+    console.log(`auto-detected uid: ${UID} (${real[0].email})`);
+  }
 
-  const addedL = [], addedQ = [];
-  collect(LESSONS, "lesson").forEach(({ file, data }) => {
-    if (!data.id) { console.warn(`  skip (no id): ${file}`); return; }
-    addedL.push(`${data.id}${lessons[data.id] ? " (overwrite)" : ""}`);
-    lessons[data.id] = data;
-  });
-  collect(QUIZZES, "quiz").forEach(({ file, data }) => {
-    if (!data.id) { console.warn(`  skip (no id): ${file}`); return; }
-    addedQ.push(`${data.id}${quizzes[data.id] ? " (overwrite)" : ""}`);
-    quizzes[data.id] = data;
-  });
+  const log = [];
 
-  console.log(`\nUser ${UID}`);
-  console.log(`  content before: ${before.lessons} lessons, ${before.quizzes} quizzes`);
-  console.log(`  adding lessons: ${addedL.join(", ") || "(none)"}`);
-  console.log(`  adding quizzes: ${addedQ.join(", ") || "(none)"}`);
-  console.log(`  content after:  ${Object.keys(lessons).length} lessons, ${Object.keys(quizzes).length} quizzes`);
+  // ----- flashcards -> /state (merge cards + categories by id) -----
+  if (FLASH) {
+    const decks = collect(FLASH, "any");
+    const ref = db.ref(`users/${UID}/state`);
+    const state = (await ref.once("value")).val() || {};
+    const cards = byId(state.cards), cats = byId(state.categories);
+    let addedC = 0, addedK = 0;
+    decks.forEach((d) => {
+      (d.categories || []).forEach((c) => { if (c.id && !cats[c.id]) { cats[c.id] = c; addedK++; } });
+      (d.cards || []).forEach((c) => { if (c.id && !cards[c.id]) { cards[c.id] = c; addedC++; } });
+    });
+    log.push({ kind: "flashcards", node: "state", added: `${addedC} cards, ${addedK} categories`,
+      write: async () => {
+        const backup = path.join(__dirname, `content-backup-${UID.slice(0, 6)}-state.json`);
+        fs.writeFileSync(backup, JSON.stringify(state, null, 2));
+        await ref.set({ ...state, categories: Object.values(cats), cards: Object.values(cards),
+          reviewQueue: state.reviewQueue || [], writerId: "admin-push", updatedAt: ServerValue.TIMESTAMP });
+      } });
+  }
 
-  if (DRY) { console.log("\nDry run — nothing written.\n"); process.exit(0); }
-  if (!addedL.length && !addedQ.length) { console.log("\nNothing to add.\n"); process.exit(0); }
+  // ----- lessons / quizzes -> /content (merge maps by id) -----
+  if (LESSONS || QUIZZES) {
+    const ref = db.ref(`users/${UID}/content`);
+    const content = (await ref.once("value")).val() || {};
+    const lessons = parseMap(content.lessons), quizzes = parseMap(content.quizzes);
+    const addedL = [], addedQ = [];
+    collect(LESSONS, "lesson").forEach((d) => { if (d.id) { addedL.push(d.id + (lessons[d.id] ? " (overwrite)" : "")); lessons[d.id] = d; } });
+    collect(QUIZZES, "quiz").forEach((d) => { if (d.id) { addedQ.push(d.id + (quizzes[d.id] ? " (overwrite)" : "")); quizzes[d.id] = d; } });
+    log.push({ kind: "content", node: "content", added: `lessons [${addedL.join(", ") || "-"}], quizzes [${addedQ.join(", ") || "-"}]`,
+      write: async () => {
+        const backup = path.join(__dirname, `content-backup-${UID.slice(0, 6)}-content.json`);
+        fs.writeFileSync(backup, JSON.stringify(content, null, 2));
+        await ref.set({ schemaVersion: content.schemaVersion || 1, updatedAt: ServerValue.TIMESTAMP,
+          lessons: JSON.stringify(lessons), quizzes: JSON.stringify(quizzes) });
+      } });
+  }
 
-  // Back up current content before writing.
-  const backup = path.join(__dirname, `content-backup-${UID.slice(0, 6)}.json`);
-  fs.writeFileSync(backup, JSON.stringify(remote, null, 2));
-  console.log(`\n  backed up current content -> ${path.relative(process.cwd(), backup)}`);
-
-  await ref.set({
-    schemaVersion: remote.schemaVersion || 1,
-    updatedAt: admin.database.ServerValue.TIMESTAMP,
-    lessons: JSON.stringify(lessons),
-    quizzes: JSON.stringify(quizzes),
-  });
-  console.log("  ✓ written. Reload the app (signed in) to see the new content.\n");
+  console.log(`\n${DRY ? "DRY RUN" : "WRITE"} — user ${UID}`);
+  log.forEach((l) => console.log(`  ${l.kind} -> /${l.node}: ${l.added}`));
+  if (DRY) { console.log("\n(dry run — nothing written)\n"); process.exit(0); }
+  for (const l of log) await l.write();
+  console.log("\n✓ written (node backed up first). Flashcards appear live; lessons on reload.\n");
   process.exit(0);
-})().catch((e) => { console.error("Error:", e); process.exit(1); });
+})().catch((e) => { console.error("Push failed:", e.message); process.exit(1); });
