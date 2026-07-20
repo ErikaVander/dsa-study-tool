@@ -16,7 +16,10 @@ See **[GLOBAL_LAYER.md](GLOBAL_LAYER.md)** — the all-users layer: mission, cur
 SRS algorithm, pedagogy/authoring methodology, and the **seed content** (global sample = the
 **Big O** 1.1 lesson + `bigo-recognition` quiz + `bigo-*` flashcards, cloned per user on signup).
 Everything is global-by-default, per-user-overridable; the per-user Firebase profile IS that
-user's memory. **Seed-clone DONE:** per-user content storage now exists at `/users/$uid/content`
+user's memory. **Seed-clone DONE (v12, USER-VERIFIED no-regression 2026-07-20 — content loads
+identically after 2 reloads; note "identical" can't distinguish clone-populated from fail-safe
+fallback, so confirm the content node populated before the trim below).** Per-user content
+storage now exists at `/users/$uid/content`
 (stringified `{lessons,quizzes}` maps) — on a fresh account `cloud.loadContent()` clones the
 currently-loaded repo content into the user's space, then merges their copy over the repo
 baseline (fail-safe: repo content stays on any error; skipped in author mode). Flashcards were
