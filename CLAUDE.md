@@ -189,10 +189,26 @@ methodology/pedagogy/schemas now live in the repo at **[GLOBAL_LAYER.md](GLOBAL_
 Per-user "what's the next lesson" is NOT tracked here — it's derived per user from their
 SYLLABUS.md / profile at session time.
 
+**Phase 5 — global-update review system (DONE 2026-07-20, v14):** builds on the 3c curriculum
+versioned-update flow, extended to seed CONTENT. Seed lessons/quizzes carry a top-level
+`version` (Lesson_1.1 + quiz-bigo-mc = 1). In `cloud.loadContent`, when a shipped seed's
+`version` exceeds the user's cloned copy AND the copy is unedited (`!_userEdited`), the newer
+global content is auto-inherited (seamless — the "no patch → take the update" majority) and
+re-pushed to the clone; equal-version or user-edited copies keep the user's version. To ship a
+content update: edit the seed file and bump its `version`. (When in-app content editing lands,
+set `_userEdited` on edits so they route to a take-new/keep-mine prompt instead of silent
+inherit.) Verified: node --check + logic test (newer→inherit, equal→keep, edited→keep,
+clone-newer→keep, non-seed→preserved).
+
+**Phase 6 — onboarding playbook (DONE 2026-07-20):** `SELF_HOSTING.md` — a ~20-min guide to run
+your own instance (fork, create Firebase project, enable Anonymous+Google auth, create RTDB,
+deploy the security rules, set `firebase-config.js`, enable Pages, verify), plus what ships vs.
+per-user, authoring, and costs.
+
 ## What's next
 - Phase 3 Stage 3c is CODE-COMPLETE + hardened; needs interactive UI-verify pass.
-- Phase 5 global-update review system (partly done in 3c); Phase 6 onboarding playbook
-  (so others can self-host); Phase 7 donations; Phase 8 email/newsletter.
+- Phase 7 donations; Phase 8 email/newsletter (first backend feature — Cloud Functions + email
+  provider + Blaze billing). Both gated on external account setup the creator must do.
 - Cleanup: purge throwaway anonymous users — DONE 2026-07-20 (user manually deleted the anon
   users + their orphaned `/users` nodes; real account kept). Re-runnable tool for future
   buildup: `tools/purge-anon-users.js` (Admin SDK, dry-run by default, only deletes anon users).
@@ -203,7 +219,7 @@ SYLLABUS.md / profile at session time.
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v13`.
+  users. Currently `v14`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit

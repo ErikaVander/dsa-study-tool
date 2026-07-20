@@ -1,5 +1,6 @@
 {
   "id": "quiz-bigo-mc",
+  "version": 1,
   "title": "Big O recognition (MC)",
   "questions": [
     {

@@ -1,5 +1,6 @@
 {
   "id": "lesson-1.1",
+  "version": 1,
   "title": "1.1 Big O & Complexity Analysis",
   "date": "2026-04-01",
   "summary": "Recognize O(1), O(n), O(n²), O(log n). Analyze unknown functions. Write functions to match a target complexity.",

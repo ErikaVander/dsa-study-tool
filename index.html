@@ -5350,13 +5350,28 @@ cloud = {
         if (fs.lessons.size || fs.quizzes.size) await ref.set(this._contentPayload());  // clone seed
         return;   // fs already holds this content — nothing to merge
       }
+      // Phase 5 — global-update auto-inherit: normally the user's clone wins per id, BUT if the
+      // shipped seed carries a NEWER `version` than the clone and the user hasn't edited their
+      // copy (no `_userEdited`), keep the newer global content (seamless auto-inherit — the
+      // "no patch → take the update" majority case). When in-app content editing lands, an
+      // edited copy would instead route to a take-new/keep-mine prompt (see curriculum flow).
+      let contentUpdated = false;
       const mergeInto = (mapStr, targetMap) => {
         let obj = {};
         try { obj = typeof mapStr === "string" ? JSON.parse(mapStr) : (mapStr || {}); } catch (e) { obj = {}; }
-        Object.values(obj).forEach((item) => { if (item && item.id) targetMap.set(item.id, item); });  // user copy wins on id
+        Object.values(obj).forEach((clone) => {
+          if (!clone || !clone.id) return;
+          const seed = targetMap.get(clone.id);   // the shipped seed for this id, if any
+          if (seed && Number(seed.version || 1) > Number(clone.version || 1) && !clone._userEdited) {
+            contentUpdated = true;   // leave the newer seed (already in targetMap) in place
+          } else {
+            targetMap.set(clone.id, clone);        // user's own copy wins
+          }
+        });
       };
       mergeInto(remote.lessons, fs.lessons);
       mergeInto(remote.quizzes, fs.quizzes);
+      if (contentUpdated) await ref.set(this._contentPayload());   // persist the inherited updates back to the clone
       fs.manifestLoaded = true;
       // Keep active selections valid, re-apply answers onto merged lesson objects, re-render.
       const lessons = getLessonsSorted();
