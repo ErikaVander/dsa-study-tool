@@ -21,3 +21,4 @@ tools/service-account.json
 node_modules/
 tools/node_modules/
 tools/package-lock.json
+tools/content-backup-*.json
