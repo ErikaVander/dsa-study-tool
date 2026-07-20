@@ -45,7 +45,29 @@ match; the personal deck was moved out so it's excluded.)
   `/users/$uid/state` (LIVE-synced via .on listener), quiz attempts at
   `/users/$uid/attempts/$quizId/$attemptId` (stored as JSON strings; synced on reload).
 
-## Current state (2026-07-17)
+## ▶ START HERE (status as of 2026-07-20, live at SW v14)
+**Done this stretch:** Phase 3 fully complete (per-user profile, live progress bar, mastery,
+study log, review queue, overlay+patch tree editing + custom mode, versioned curriculum-update,
+seed-clone), + hardening pass after adversarial review, + Phase 4 author-ahead ritual cemented
+as a standing instruction, + global-layer methodology migrated to the repo (`GLOBAL_LAYER.md`),
++ repo trimmed to the Big O seed, + Phase 5 (content versioned auto-inherit), + Phase 6
+(`SELF_HOSTING.md`), + anon-user cleanup. App is multi-user-ready, self-hostable, and
+content-updatable.
+
+**THE NEXT ACTION = Phase 7 (Donations):** deferred by the user until they set up a payment
+link. When the user provides a **Ko-fi / Buy Me a Coffee / Stripe Payment Link**, add a "Donate"
+button + milestone prompts (at section/course complete; unlock nothing — Wikipedia-style). ~1
+session; blocked only on that link. AFTER 7: **Phase 8 (email/newsletter)** — the first real
+backend (Cloud Functions + email provider + Firebase Blaze billing + DNS verification), multi-
+session, gated on the user's billing/provider/DNS setup. See the "What's next" section.
+
+**Open verification (non-blocking):** the user is hand-clicking the newer 3c surfaces (mastery
+panel, Log, Review, tree editing, update-review) as they study — those are logic+deploy verified
+but only lightly clicked. Also: after the repo trim (v13), the user is confirming their non-Big-O
+lessons still render from their per-user CLONE; if any go missing, `git revert` the trim commit
+(files are safe in `private/` + git history) and redeploy.
+
+## Current state (foundation, user-verified earlier)
 Done & user-verified: git + relocate; device-agnostic fetch loader + PWA; Firebase
 anonymous + Google auth; cross-device sync; quiz-attempt persistence; live flashcard
 sync. All four original goals met (any-device access, cross-device flashcards,
