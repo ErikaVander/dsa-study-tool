@@ -16,9 +16,13 @@ See **[GLOBAL_LAYER.md](GLOBAL_LAYER.md)** — the all-users layer: mission, cur
 SRS algorithm, pedagogy/authoring methodology, and the **seed content** (global sample = the
 **Big O** 1.1 lesson + `bigo-recognition` quiz + `bigo-*` flashcards, cloned per user on signup).
 Everything is global-by-default, per-user-overridable; the per-user Firebase profile IS that
-user's memory. Legacy: the repo still ships the creator's non-seed lessons/quizzes/flashcards
-because per-user *content* storage in Firebase isn't built yet — don't delete them (breaks live
-access); they move to per-user space when that lands.
+user's memory. **Seed-clone DONE:** per-user content storage now exists at `/users/$uid/content`
+(stringified `{lessons,quizzes}` maps) — on a fresh account `cloud.loadContent()` clones the
+currently-loaded repo content into the user's space, then merges their copy over the repo
+baseline (fail-safe: repo content stays on any error; skipped in author mode). Flashcards were
+already per-user via `/state`. REMAINING: the repo still ships the creator's full content as the
+clone source; **trim the repo to just the Big O seed** so NEW accounts clone only the sample
+(safe to do once existing users have cloned — don't do it before, it'd break their live access).
 
 ## Architecture
 - Static app; lessons/quizzes/flashcards loaded via `fetch()` + `manifest.json`
@@ -189,7 +193,7 @@ SYLLABUS.md / profile at session time.
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v11`.
+  users. Currently `v12`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit

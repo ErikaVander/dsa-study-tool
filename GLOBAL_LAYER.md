@@ -32,13 +32,14 @@ anyone else. The seed set is the one canonical example every user starts from.
 - **Flashcards:** the `bigo-*` concept cards (`bigo-hierarchy`, `bigo-map`, `bigo-n-plus-m`,
   `bigo-rules`, `bigo-recognition`, …)
 
-> **Legacy note:** the repo currently also ships the creator's other lessons/quizzes/flashcards
-> (1.2–1.5, 1.3.5, and non-Big-O quizzes/decks). Those are the creator's **per-user** content,
-> served from the repo only because per-user *content* storage in Firebase isn't built yet
-> (today only flashcard state, quiz attempts, and the profile live per-user in Firebase; lesson
-> and quiz **content** is still repo-loaded read-only). When per-user content storage lands,
-> only the seed set stays global and the rest moves to each user's space. Do NOT delete the
-> creator's content before then — it would break their live access.
+> **Status:** per-user content storage now EXISTS — on a fresh account, `cloud.loadContent()`
+> clones the currently-loaded content into `/users/$uid/content` and thereafter merges that
+> copy over the repo baseline. But the repo still *ships* the creator's full content (1.2–1.5,
+> 1.3.5, non-Big-O quizzes) as the clone source, so today a new account clones all of it, not
+> just Big O. The remaining step is to **trim the shipped repo content down to the Big O seed**
+> so new accounts clone only the sample. Do that ONLY after existing users have signed in and
+> cloned their content — trimming first would remove their lessons from the live site before
+> their per-user copy exists. Deletion of a user's *own* cloned content is a per-user action.
 
 ---
 

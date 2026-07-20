@@ -5083,6 +5083,7 @@ cloud = {
       this.enabled = true;
       this.updateAuthUI(user);
       await this.loadAndMerge();
+      await this.loadContent();   // clone/merge per-user lesson+quiz content (seed-clone)
       await this.loadAttempts();
       await this.loadProfile();
       this.subscribeLive();
@@ -5332,6 +5333,48 @@ cloud = {
       // if a merge step threw, so we never silently disable all future syncs.
       this._applying = false;
     }
+  },
+
+  // Seed-clone (Phase 3): each user gets their OWN copy of lesson/quiz CONTENT in
+  // /users/$uid/content (design: "content = clone", not shared). On a fresh account we clone
+  // the currently-loaded content (the repo seed) into the user's space; thereafter their copy
+  // is merged over the repo baseline so it renders. Fail-safe: any error leaves the repo
+  // content in place. Skipped in author mode (fs.connected) where local folder files are the
+  // source of truth. (Flashcards already live per-user via /state; only lessons+quizzes here.)
+  async loadContent() {
+    if (!this.enabled || !this.uid || fs.connected) return;
+    try {
+      const ref = this.db.ref(`users/${this.uid}/content`);
+      const remote = (await ref.once("value")).val();
+      if (!remote) {
+        if (fs.lessons.size || fs.quizzes.size) await ref.set(this._contentPayload());  // clone seed
+        return;   // fs already holds this content — nothing to merge
+      }
+      const mergeInto = (mapStr, targetMap) => {
+        let obj = {};
+        try { obj = typeof mapStr === "string" ? JSON.parse(mapStr) : (mapStr || {}); } catch (e) { obj = {}; }
+        Object.values(obj).forEach((item) => { if (item && item.id) targetMap.set(item.id, item); });  // user copy wins on id
+      };
+      mergeInto(remote.lessons, fs.lessons);
+      mergeInto(remote.quizzes, fs.quizzes);
+      fs.manifestLoaded = true;
+      // Keep active selections valid, re-apply answers onto merged lesson objects, re-render.
+      const lessons = getLessonsSorted();
+      if (!activeLessonId || !fs.lessons.get(activeLessonId)) activeLessonId = lessons.length ? lessons[lessons.length - 1].id : null;
+      const quizzes = getQuizzesSorted();
+      if (!activeQuizId || !fs.quizzes.get(activeQuizId)) activeQuizId = quizzes.length ? quizzes[0].id : null;
+      hydrateLessonAnswers();
+      renderLessons(); renderLessonBody(); renderQuizzes(); renderQuizBody();
+    } catch (e) { console.warn("Content clone/load failed (keeping repo content):", e); }
+  },
+  _contentPayload() {
+    const toMap = (m) => { const o = {}; m.forEach((v, k) => { o[k] = v; }); return JSON.stringify(o); };
+    return {
+      schemaVersion: 1,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+      lessons: toMap(fs.lessons),
+      quizzes: toMap(fs.quizzes),
+    };
   },
 
   scheduleProfileSync() {
