@@ -109,6 +109,14 @@
   .sp-dot.major { width: 12px; height: 12px; border-width: 2px; }
   .sp-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
   .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  /* Narrow screens (phones): let the header wrap instead of overflowing, and drop the
+     progress bar onto its own full-width row below the title/tabs/actions. */
+  @media (max-width: 760px) {
+    .topbar { flex-wrap: wrap; gap: 10px 14px; padding: 12px 16px; }
+    .topbar-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+    .syllabus-progress { order: 5; flex-basis: 100%; }
+    .tab { padding: 6px 10px; }
+  }
 
   /* Plan / Job Search Roadmap page */
   .plan-intro { font-size: 13px; color: var(--text-muted); margin: 0 0 20px; max-width: 720px; }
@@ -817,6 +825,7 @@
   .cp-row-id { color: var(--text-muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; min-width: 34px; }
   .cp-row-txt { flex: 1 1 auto; line-height: 1.35; }
   .cp-row.known .cp-row-txt { color: var(--text-muted); }
+  .cp-row.learning .cp-row-txt { color: #b45309; }
   .cp-seg { flex: 0 0 auto; display: inline-flex; gap: 4px; }
   .cp-seg-btn { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; line-height: 1.4; }
   .cp-seg-btn:hover { border-color: var(--text-muted); }
@@ -1107,6 +1116,41 @@ function setLessonAnswer(lessonId, exerciseId, code) {
   (profile.lessonAnswers[lessonId] = profile.lessonAnswers[lessonId] || {})[exerciseId] = code;
   saveProfile();
 }
+// Fold another device's remote profile into the local one before we overwrite the node,
+// preserving remote-only ADDITIONS (new answer keys, chapters, notes fields, session/queue
+// entries) so a whole-profile .set() doesn't drop them. LOCAL wins on true key conflicts
+// (this device is asserting its just-made change); monotonic counters take the max.
+function unionRemoteIntoLocal(remote) {
+  if (!remote || typeof remote !== "object") return;
+  const parse = (v, d) => { try { return typeof v === "string" ? JSON.parse(v) : (v == null ? d : v); } catch (e) { return d; } };
+  const addMissing = (localObj, remoteObj) => {
+    Object.keys(remoteObj || {}).forEach((k) => { if (!(k in localObj)) localObj[k] = remoteObj[k]; });
+  };
+  const unionById = (localArr, remoteArr) => {
+    const byId = {};
+    (remoteArr || []).forEach((e) => { if (e && e.id) byId[e.id] = e; });
+    (localArr || []).forEach((e) => { if (e && e.id) byId[e.id] = e; });   // local wins on id conflict
+    return Object.values(byId);
+  };
+  const ra = parse(remote.lessonAnswers, {});
+  Object.keys(ra || {}).forEach((lid) => { addMissing(profile.lessonAnswers[lid] = profile.lessonAnswers[lid] || {}, ra[lid]); });
+  addMissing(profile.progress = profile.progress || {}, parse(remote.progress, {}));
+  addMissing(profile.notes = profile.notes || {}, parse(remote.notes, {}));
+  profile.sessionLog = unionById(profile.sessionLog, parse(remote.sessionLog, []));
+  profile.reviewQueue = unionById(profile.reviewQueue, parse(remote.reviewQueue, []));
+  if (Number.isFinite(remote.currentSession)) profile.currentSession = Math.max(profile.currentSession || 1, remote.currentSession);
+  if (Number.isFinite(remote.seenCurriculumVersion)) profile.seenCurriculumVersion = Math.max(profile.seenCurriculumVersion || 0, remote.seenCurriculumVersion);
+  const ro = parse(remote.treeOverlay, {});
+  if (ro && typeof ro === "object") {
+    const ov = ensureOverlay();
+    ov.added = unionById(ov.added, ro.added);
+    addMissing(ov.hidden, ro.hidden || {});
+    addMissing(ov.renamed, ro.renamed || {});
+    addMissing(ov.order, ro.order || {});
+  }
+  // treeMode/customTree/policy/snapshot: keep local — this device is writing its own intent.
+}
+
 // Copy any stored answers onto the in-memory lesson objects so they render.
 // Only overwrites when the profile actually has an entry (won't wipe seed answers).
 function hydrateLessonAnswers() {
@@ -1529,8 +1573,7 @@ function reviewItem(id, outcome) {
   item.interval = srsNextInterval(item.interval, outcome);
   item.lastReviewed = s;
   item.nextReview = s + item.interval;
-  item.status = (outcome === "nailed" ? "nailed" : "reset") + " @ session " + s +
-    (item.status ? " · " + item.status.replace(/^(nailed|reset) @ session \d+ · /, "") : "");
+  item.status = (outcome === "nailed" ? "Nailed" : "Reset") + " at session " + s + " → interval " + item.interval;
   saveProfile();
 }
 function setCurrentSession(n) {
@@ -5000,10 +5043,12 @@ cloud = {
   },
 
   init() {
+    if (this._inited) return;   // bootstrap() re-runs on deck import; don't double-register auth listeners
     if (!window.firebase || !window.FIREBASE_CONFIG) {
       console.info("Firebase unavailable — running local-only (no cloud sync).");
       return;
     }
+    this._inited = true;
     try {
       firebase.initializeApp(window.FIREBASE_CONFIG);
       this.db = firebase.database();
@@ -5032,6 +5077,7 @@ cloud = {
         return;
       }
       if (this.ref) this.ref.off();   // detach any listener from a previous account
+      if (this.uid && this.uid !== user.uid) curriculumUpdateHandled = false;  // re-check on account switch
       this.uid = user.uid;
       this.ref = this.db.ref("users/" + user.uid + "/state");
       this.enabled = true;
@@ -5279,7 +5325,13 @@ cloud = {
       renderSyllabusProgress();   // reflect the synced progress overlay
       checkCurriculumUpdate();    // review global curriculum changes now that cloud state is merged
       this.pushProfile();       // seed a new doc, or push the merged union back up
-    } catch (e) { console.warn("Profile load failed:", e); }
+    } catch (e) {
+      console.warn("Profile load failed:", e);
+    } finally {
+      // _applying is a SHARED sync guard (flashcards + profile). Guarantee it clears even
+      // if a merge step threw, so we never silently disable all future syncs.
+      this._applying = false;
+    }
   },
 
   scheduleProfileSync() {
@@ -5288,9 +5340,8 @@ cloud = {
     this._profileTimer = setTimeout(() => this.pushProfile(), 800);
   },
 
-  pushProfile() {
-    if (!this.enabled || !this.uid) return;
-    this.db.ref(`users/${this.uid}/profile`).set({
+  _profilePayload() {
+    return {
       schemaVersion: profile.schemaVersion || 1,
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
       writerId: this.writerId,
@@ -5306,7 +5357,23 @@ cloud = {
       seenCurriculumVersion: profile.seenCurriculumVersion || 0,
       curriculumUpdatePolicy: profile.curriculumUpdatePolicy || "ask",
       curriculumSnapshot: JSON.stringify(profile.curriculumSnapshot || null),
-    }).catch((e) => console.warn("Profile push failed:", e));
+    };
+  },
+
+  // The whole profile is one node written with .set(), so a naive push would clobber
+  // additions another device made since our last read. Re-read first and fold in any
+  // remote-only additions (union by id / add missing keys, LOCAL wins on true conflicts)
+  // so concurrent writers don't lose each other's data. Not a transaction — the residual
+  // race is the ms between read and write, vs. an entire session before.
+  pushProfile() {
+    if (!this.enabled || !this.uid) return;
+    const ref = this.db.ref(`users/${this.uid}/profile`);
+    ref.once("value")
+      .then((snap) => {
+        unionRemoteIntoLocal(snap.val());
+        return ref.set(this._profilePayload());
+      })
+      .catch((e) => console.warn("Profile push failed:", e));
   },
 
   // Live flashcard sync: apply changes pushed from OTHER devices/sessions in real

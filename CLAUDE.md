@@ -124,8 +124,22 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Verified: node --check; 8-case decision test (auto/prompt/policy/baseline/seen/merge); REST
   roundtrip. NOTE: bumping `version` in curriculum.json is manual — do it on any tree change.
 
+**Phase 3 Stage 3c — hardening pass (commit after independent adversarial review, SW v10→v11).**
+Independent review of the full 3c diff found the code sound (no crashes/hoisting/off-by-one/
+logic bugs). Fixes applied: (1) **profile data-loss** — the whole profile is one node written
+via `.set()`, so a 2nd device's concurrent additions could be clobbered. `pushProfile()` now
+does read→union→write: `unionRemoteIntoLocal()` folds in remote-only additions (union arrays by
+id, add missing object keys; LOCAL wins on true conflicts; counters take max) before the set.
+Residual race is ms (read→write) vs. a whole session. (2) responsive header `@media(max-width:760px)`
+— wraps + drops the progress bar to its own row (the new Log/Review buttons crowded mobile).
+(3) `loadProfile` wrapped in try/`finally` so the SHARED `_applying` sync guard can't wedge on a
+mid-merge throw. (4) `checkCurriculumUpdate` re-checks on Google account switch. (5) `cloud.init`
+guarded against double-registering the auth listener when `bootstrap()` re-runs on deck import.
+(6) SRS review status string simplified. (7) `.cp-row.learning` CSS. Verified: node --check +
+union-merge logic test (reviewer's X/Y scenario: both survive; local-wins-on-conflict; null-safe).
+
 ## What's next
-- Phase 3 Stage 3c is CODE-COMPLETE (all 5 items shipped); needs interactive UI-verify pass.
+- Phase 3 Stage 3c is CODE-COMPLETE + hardened; needs interactive UI-verify pass.
 - Phase 4 author-ahead session workflow; Phase 5 global-update review system;
   Phase 6 onboarding playbook (so others can self-host); Phase 7 donations;
   Phase 8 email/newsletter.
@@ -137,7 +151,7 @@ checked 1.1–1.5 in the in-app panel (left 1.3.5 unchecked), bar filled and syn
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v10`.
+  users. Currently `v11`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit
