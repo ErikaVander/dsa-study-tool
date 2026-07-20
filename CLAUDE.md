@@ -11,6 +11,15 @@ GitHub Pages, backed by Firebase, with in-browser Python.
 - **`private/`** (gitignored): the user's real personal study data — SYLLABUS.md,
   quiz attempts, saved answers. NEVER commit it; it's destined for Firebase, not the repo.
 
+## Global vs per-user (the data-model split)
+See **[GLOBAL_LAYER.md](GLOBAL_LAYER.md)** — the all-users layer: mission, curriculum skeleton,
+SRS algorithm, pedagogy/authoring methodology, and the **seed content** (global sample = the
+**Big O** 1.1 lesson + `bigo-recognition` quiz + `bigo-*` flashcards, cloned per user on signup).
+Everything is global-by-default, per-user-overridable; the per-user Firebase profile IS that
+user's memory. Legacy: the repo still ships the creator's non-seed lessons/quizzes/flashcards
+because per-user *content* storage in Firebase isn't built yet — don't delete them (breaks live
+access); they move to per-user space when that lands.
+
 ## Architecture
 - Static app; lessons/quizzes/flashcards loaded via `fetch()` + `manifest.json`
   (regenerate with `python3 tools/gen_manifest.py` after adding/removing content).
@@ -161,9 +170,9 @@ concept ≈ 0 (for a user whose gap is code production, not concepts); a genuine
 still gets real concept teaching. (b) NEVER full-`Write` a lesson file — use targeted Edits;
 a full rewrite once clobbered saved answers. (c) Quiz questions need `explanation` (worked
 example w/ real values), `visual` (small ASCII), `cardBack`; code questions need
-`starter`/`tests`/`testSetup`. (d) Keep review quizzes SEPARATE (Quizzes tab). Detailed
-schemas/conventions: memory `lesson-authoring`, `quiz-authoring`, `lesson-scope-known-concepts`,
-`flashcard-format` (creator's reference — mirror into a repo doc if others self-host + author).
+`starter`/`tests`/`testSetup`. (d) Keep review quizzes SEPARATE (Quizzes tab). Full global
+methodology/pedagogy/schemas now live in the repo at **[GLOBAL_LAYER.md](GLOBAL_LAYER.md)**
+(migrated out of the creator's private Claude memory so it's portable to all users).
 
 Per-user "what's the next lesson" is NOT tracked here — it's derived per user from their
 SYLLABUS.md / profile at session time.
