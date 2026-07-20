@@ -138,32 +138,35 @@ guarded against double-registering the auth listener when `bootstrap()` re-runs 
 (6) SRS review status string simplified. (7) `.cp-row.learning` CSS. Verified: node --check +
 union-merge logic test (reviewer's X/Y scenario: both survive; local-wins-on-conflict; null-safe).
 
-## Author-ahead ritual (Phase 4) — STANDING OPERATING INSTRUCTION
-At the END of every study session, Claude authors the NEXT session's material so it's
-ready before the user sits down (never a blank start). Keep the buffer exactly ONE lesson
-ahead of the next-to-study — don't jump further. Steps:
-1. **Retro** — ask what went well / what didn't / what to change; write it into the user's
-   profile via the app data (session log, notes, review queue) AND into private/SYLLABUS.md
-   (the author-mode source that seeds the cloud profile).
-2. Ask **once**: "Build your next lesson + quiz now?" (skip if already buffered).
+## Author-ahead ritual (Phase 4) — STANDING OPERATING INSTRUCTION (applies to EVERY user)
+This is a permanent workflow, not a one-off: in ANY session where Claude authors for a user,
+at the END of the session Claude prepares the NEXT session's material so that user never
+starts blank. It holds for every user of this app who uses the Claude-authoring path, not
+just the creator. Keep the buffer exactly ONE lesson ahead of the user's next-to-study —
+don't jump further. Steps:
+1. **Retro** — ask what went well / what didn't / what to change; write it into that user's
+   profile data (session log, notes, review queue) AND, in author mode, into their
+   SYLLABUS.md (the source that seeds the cloud profile).
+2. Ask **once**: "Build your next lesson + quiz now?" (skip if the next lesson is already
+   buffered).
 3. If yes → author the next lesson + its review quiz (+ any flashcards) immediately.
    A pre-built lesson persists; if it later feels too advanced, leave it queued and author a
    remedial recall quiz/lesson as a side-branch instead.
-4. **Standing consent** (ask once, then remember the preference): yes = author future
+4. **Standing consent** (ask once per user, then remember the preference): yes = author future
    sessions seamlessly; no = author ahead but the user approves each write.
-**Hard rules when authoring:** (a) BEFORE writing, ask "do you already know <concept>?" — if
-yes, the lesson body is a syntax/idioms toolkit in COLLAPSIBLE sections, concept ≈ 0 (the
-user's gap is Python production, not concepts). (b) NEVER full-`Write` a lesson file — use
-targeted Edits; a full rewrite once clobbered saved answers. (c) Quiz questions need
-`explanation` (worked example w/ real values), `visual` (small ASCII), `cardBack`; code
-questions need `starter`/`tests`/`testSetup`. (d) Keep review quizzes SEPARATE (Quizzes tab).
-Details: memory `lesson-authoring`, `quiz-authoring`, `lesson-scope-known-concepts`,
-`flashcard-format`, `syntax-gap-not-concept-gap`.
 
-**Queue state (2026-07-20):** next-to-study = **1.3.5 collections** (already authored ahead
-at S10, ready: 10 body blocks + 3 exercises w/ tests, not yet studied). Next author-ahead
-target = **1.6 Two Pointers & Sliding Window**, to be written when 1.3.5 is completed (needs
-the "do you already know two-pointers?" answer first — it's a genuine algorithm topic).
+**Hard authoring rules (universal):** (a) BEFORE writing, ask "do you already know
+<concept>?" — if yes, the lesson body is a syntax/idioms toolkit in COLLAPSIBLE sections,
+concept ≈ 0 (for a user whose gap is code production, not concepts); a genuine algorithm topic
+still gets real concept teaching. (b) NEVER full-`Write` a lesson file — use targeted Edits;
+a full rewrite once clobbered saved answers. (c) Quiz questions need `explanation` (worked
+example w/ real values), `visual` (small ASCII), `cardBack`; code questions need
+`starter`/`tests`/`testSetup`. (d) Keep review quizzes SEPARATE (Quizzes tab). Detailed
+schemas/conventions: memory `lesson-authoring`, `quiz-authoring`, `lesson-scope-known-concepts`,
+`flashcard-format` (creator's reference — mirror into a repo doc if others self-host + author).
+
+Per-user "what's the next lesson" is NOT tracked here — it's derived per user from their
+SYLLABUS.md / profile at session time.
 
 ## What's next
 - Phase 3 Stage 3c is CODE-COMPLETE + hardened; needs interactive UI-verify pass.
