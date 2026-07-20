@@ -14,3 +14,10 @@ private/
 # Editor/OS noise
 *.swp
 Thumbs.db
+
+# Admin tooling — service-account keys are SECRETS, never commit
+service-account.json
+tools/service-account.json
+node_modules/
+tools/node_modules/
+tools/package-lock.json
