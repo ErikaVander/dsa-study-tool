@@ -188,7 +188,9 @@ SYLLABUS.md / profile at session time.
 - Phase 3 Stage 3c is CODE-COMPLETE + hardened; needs interactive UI-verify pass.
 - Phase 5 global-update review system (partly done in 3c); Phase 6 onboarding playbook
   (so others can self-host); Phase 7 donations; Phase 8 email/newsletter.
-- Cleanup: purge throwaway anonymous users created during sign-in testing.
+- Cleanup: purge throwaway anonymous users — DONE 2026-07-20 (user manually deleted the anon
+  users + their orphaned `/users` nodes; real account kept). Re-runnable tool for future
+  buildup: `tools/purge-anon-users.js` (Admin SDK, dry-run by default, only deletes anon users).
 
 ## Gotchas & conventions
 - **Never call `signInAnonymously()` unconditionally at startup** — only from the
