@@ -23,9 +23,14 @@ storage now exists at `/users/$uid/content`
 (stringified `{lessons,quizzes}` maps) — on a fresh account `cloud.loadContent()` clones the
 currently-loaded repo content into the user's space, then merges their copy over the repo
 baseline (fail-safe: repo content stays on any error; skipped in author mode). Flashcards were
-already per-user via `/state`. REMAINING: the repo still ships the creator's full content as the
-clone source; **trim the repo to just the Big O seed** so NEW accounts clone only the sample
-(safe to do once existing users have cloned — don't do it before, it'd break their live access).
+already per-user via `/state`. **REPO TRIM DONE (v13, 2026-07-20):** shipped/global content is
+now just the Big O seed — manifest = `Lesson_1.1` + `bigo-recognition` quiz +
+`flashcards-bigo-seed.json` (the 5 bigo cards). The creator's non-seed lessons/quizzes/full deck
+were moved to `private/lessons`, `private/quizzes`, `private/` (gitignored; also in git history)
+— they render for the creator from their per-user CLONE, not the repo. NEW accounts now clone
+only Big O. To restore any moved file to the shipped set: move it back + `python3
+tools/gen_manifest.py`. (`gen_manifest` globs `flashcards*.json`, so the seed deck is named to
+match; the personal deck was moved out so it's excluded.)
 
 ## Architecture
 - Static app; lessons/quizzes/flashcards loaded via `fetch()` + `manifest.json`
@@ -198,7 +203,7 @@ SYLLABUS.md / profile at session time.
   Google session and clobbers it (drops users to anonymous on every reload).
 - **Bump `VERSION` in `sw.js` on every deploy that must propagate.** The service
   worker caches stale-while-revalidate, so otherwise changes need ~2 reloads to reach
-  users. Currently `v12`.
+  users. Currently `v13`.
 - **Browser test MCPs are unreliable here** (Preview/Chrome disconnect; the in-app
   Browser pane blocks localhost). Verify instead via: `node --check` on the extracted
   inline JS for syntax; the Firebase REST API for data/security paths (identitytoolkit

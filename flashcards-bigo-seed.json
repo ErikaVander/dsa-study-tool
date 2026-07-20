@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "cat-bigo",
+      "name": "Big O",
+      "summary": "Complexity classes, rules, nuances.",
+      "order": 9
+    }
+  ],
+  "cards": [
+    {
+      "id": "c-bigo-map",
+      "categoryId": "cat-bigo",
+      "order": 0,
+      "front": "Big O hierarchy (best \u2192 worst)",
+      "back": "O(1) \u2192 O(log n) \u2192 O(n) \u2192 O(n log n) \u2192 O(n\u00b2) \u2192 O(2\u207f) \u2192 O(n!)\nExamples: hash lookup, binary search, single loop, merge sort, nested loops, recursive subsets, all permutations.",
+      "sourceRef": {
+        "type": "lesson-section",
+        "lessonId": "lesson-1.1",
+        "section": "intro"
+      },
+      "concept": "bigo-hierarchy"
+    },
+    {
+      "id": "c-bigo-rules",
+      "categoryId": "cat-bigo",
+      "order": 1,
+      "front": "Big O rules",
+      "back": "Drop constants. Drop smaller terms. Default = worst case.",
+      "concept": "bigo-rules"
+    },
+    {
+      "id": "c-n-plus-m",
+      "categoryId": "cat-bigo",
+      "order": 3,
+      "front": "Two inputs of independent sizes \u2014 Big O?",
+      "back": "O(n + m). Don't collapse them into O(n) when n and m can vary independently (e.g. merging two arrays of length n and m).",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-breadth",
+        "questionIdx": 11
+      },
+      "concept": "bigo-n-plus-m"
+    },
+    {
+      "id": "kcnx5qv2",
+      "categoryId": "cat-bigo",
+      "order": 5,
+      "front": "Big O for merge sort on n elements",
+      "back": "O(n log n)\n```\n[8 7 5 1 | 6 4 3 2]\n   \u2193  split in half\n[8 7][5 1][6 4][3 2]\n   \u2193  \u2026until size 1\n[8][7][5][1][6][4][3][2]\n   \u2191  merge, sorted\n[1 2 3 4 5 6 7 8]\n```\nsplits \u2192 log n levels\nmerge \u2192 n work per level\nlog n \u00d7 n = O(n log n)",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-bigo-mc",
+        "questionIdx": 2
+      },
+      "concept": "bigo-hierarchy"
+    },
+    {
+      "id": "subq2n07",
+      "categoryId": "cat-bigo",
+      "order": 6,
+      "front": "Big O to generate all subsets of n items",
+      "back": "O(2\u207f)\n```\neach item \u2192 IN or OUT?  (2 choices)\n  a      b      c\n  2   \u00d7  2   \u00d7  2   = 2\u00b3 = 8\n\n{} {a} {b} {c} {a,b} {a,c} {b,c} {a,b,c}\n```\nn yes/no switches \u2192 2\u207f\n(arrange in order instead \u2192 n!)",
+      "sourceRef": {
+        "type": "quiz-question",
+        "quizId": "quiz-bigo-mc",
+        "questionIdx": 4
+      },
+      "concept": "bigo-hierarchy"
+    }
+  ],
+  "reviewQueue": []
+}
