@@ -97,17 +97,18 @@
   .tabs { display: flex; gap: 4px; }
   .tab { border: none; padding: 6px 12px; color: var(--text-muted); border-radius: var(--radius-sm); }
   .tab.active { color: var(--text); background: var(--accent-soft); }
-  /* Curriculum progress — connected dots (one per chapter, larger at each phase start) */
-  .syllabus-progress { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; }
-  .sp-dots { position: relative; flex: 1; display: flex; align-items: center; justify-content: space-between; min-width: 160px; height: 16px; }
-  .sp-dots::before, .sp-dots::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); height: 2px; border-radius: 2px; }
-  .sp-dots::before { left: 5px; right: 5px; background: var(--border); }                         /* full track */
-  .sp-dots::after  { left: 5px; width: var(--sp-fill, 0px); background: var(--good); }            /* filled track */
+  /* Curriculum progress — a vertical rail of connected dots on the right edge of the app
+     (one dot per chapter, larger at each phase start). Fills top-down as chapters are learned. */
+  .syllabus-progress { flex: 0 0 auto; width: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px 8px; border-left: 1px solid var(--border); background: var(--bg-soft); }
+  .sp-dots { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 16px; min-height: 160px; }
+  .sp-dots::before, .sp-dots::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); width: 2px; border-radius: 2px; }
+  .sp-dots::before { top: 5px; bottom: 5px; background: var(--border); }                          /* full track */
+  .sp-dots::after  { top: 5px; height: var(--sp-fill, 0px); background: var(--good); }             /* filled track */
   .sp-dot { position: relative; z-index: 1; width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--bg); border: 1.5px solid var(--border); box-sizing: border-box; }
   .sp-dot.done { background: var(--good); border-color: var(--good); }
   .sp-dot.learning { background: #f59e0b; border-color: #f59e0b; }
   .sp-dot.major { width: 12px; height: 12px; border-width: 2px; }
-  .sp-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .sp-label { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.4; }
   .topbar-actions { display: flex; gap: 8px; align-items: center; }
   .icon-btn { font-size: 23px; line-height: 1; padding: 5px 9px; }
   .settings-wrap { position: relative; }
@@ -117,12 +118,12 @@
   .settings-sep { height: 1px; background: var(--border); margin: 5px 4px; }
   .avatar-btn { padding: 0; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border); background-size: cover; background-position: center; background-repeat: no-repeat; font-size: 13px; font-weight: 600; color: var(--text-muted); flex: 0 0 auto; }
   @media (min-width: 761px) { .mobile-only { display: none; } }
-  /* Narrow screens (phones): let the header wrap instead of overflowing, and drop the
-     progress bar onto its own full-width row below the title/tabs/actions. */
+  /* Narrow screens (phones): let the header wrap instead of overflowing. The vertical
+     progress rail is hidden on mobile — progress lives on the View Progress page instead. */
   @media (max-width: 760px) {
     .topbar { flex-wrap: wrap; gap: 10px 14px; padding: 12px 16px; }
     .topbar-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
-    .syllabus-progress { order: 5; flex-basis: 100%; }
+    .syllabus-progress { display: none; }
     .tab { padding: 6px 10px; }
   }
 
@@ -943,10 +944,6 @@
     <button class="tab" data-tab="lessons">Lessons</button>
     <button class="tab" data-tab="plan">Plan</button>
   </nav>
-  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress">
-    <div class="sp-dots" id="spDots" hidden></div>
-    <span class="sp-label" id="spLabel" hidden></span>
-  </div>
   <div class="topbar-actions">
     <span id="cloudStatus" class="cloud-status" title="Cloud sync status" hidden></span>
     <div class="settings-wrap">
@@ -1062,6 +1059,10 @@
       </div>
     </div>
   </section>
+  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress">
+    <div class="sp-dots" id="spDots" hidden></div>
+    <span class="sp-label" id="spLabel" hidden></span>
+  </div>
 </main>
 
 <div id="toast" class="toast"></div>
