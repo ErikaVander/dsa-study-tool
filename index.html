@@ -119,7 +119,29 @@
   .settings-item:hover { background: rgba(127,127,127,0.10); }
   .settings-sep { height: 1px; background: var(--border); margin: 5px 4px; }
   .avatar-btn { padding: 0; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border); background-size: cover; background-position: center; background-repeat: no-repeat; font-size: 13px; font-weight: 600; color: var(--text-muted); flex: 0 0 auto; }
-  @media (min-width: 761px) { .mobile-only { display: none; } }
+  .pane-list .short { display: none; }   /* the compact label shown only when collapsed */
+
+  @media (min-width: 761px) {
+    .mobile-only { display: none; }
+
+    /* Full-height left sidebar: the progress rail (far left) + the content selector, both
+       pinned floor-to-ceiling; the header + main shift right to clear them. Toggling the
+       header « / » animates the whole thing and, when collapsed, hides the rail and shrinks
+       the selector to a short-label strip (1.1, MobX, QA 1 …) instead of vanishing. */
+    .syllabus-progress { position: fixed; left: 0; top: 0; bottom: 0; width: 56px; z-index: 30; transition: transform 0.22s ease; }
+    .pane { position: fixed; left: 56px; top: 0; bottom: 0; width: 244px; z-index: 30; transition: left 0.22s ease, width 0.22s ease; }
+    .topbar, main { margin-left: 300px; transition: margin-left 0.22s ease; }
+
+    body.pane-collapsed .syllabus-progress { transform: translateX(-100%); }
+    body.pane-collapsed .pane { left: 0; width: 64px; }
+    body.pane-collapsed .topbar, body.pane-collapsed main { margin-left: 64px; }
+    body.pane-collapsed .pane-header h2, body.pane-collapsed .pane-header .icon { display: none; }
+    body.pane-collapsed .pane-header { justify-content: center; padding: 16px 8px; }
+    body.pane-collapsed .pane-list { padding: 8px 4px; }
+    body.pane-collapsed .pane-list .name, body.pane-collapsed .pane-list .count, body.pane-collapsed .pane-list .pin-btn { display: none; }
+    body.pane-collapsed .pane-list .short { display: block; text-align: center; font-size: 12px; font-weight: 600; width: 100%; }
+    body.pane-collapsed .pane-list li { justify-content: center; padding: 9px 4px; }
+  }
   /* Narrow screens (phones): let the header wrap instead of overflowing. The vertical
      progress rail is hidden on mobile — progress lives on the View Progress page instead. */
   @media (max-width: 760px) {
@@ -3450,6 +3472,33 @@ document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
   }
   toggle.addEventListener("click", () => setPaneCollapsed(!document.body.classList.contains("pane-collapsed")));
   setPaneCollapsed(!!prefs.paneCollapsed);
+})();
+
+/* When the sidebar is collapsed each content item shows a compact label instead of its
+   full title (e.g. "1.1", "MobX", "QA 1"). Derive one and inject a .short span into every
+   .pane-list li — via an observer, so no per-list render code needs to know about it. */
+function shortLabel(text) {
+  const t = (text || "").trim();
+  let m = t.match(/^(\d+(?:\.\d+)*)/);            // leading "1.1" / "1.2.3"
+  if (m) return m[1];
+  m = t.match(/^([A-Za-z]+)\s*(\d+)/);            // "QA 1", "Week 2"
+  if (m) return m[1] + " " + m[2];
+  const first = t.split(/[\s—–\-:]+/).filter(Boolean)[0] || t;   // first word, else the star/glyph
+  return first.length > 6 ? first.slice(0, 6) : first;
+}
+(() => {
+  function inject(list) {
+    list.querySelectorAll("li").forEach((li) => {
+      const name = li.querySelector(".name");
+      if (!name || li.querySelector(".short")) return;
+      const s = document.createElement("span");
+      s.className = "short";
+      s.textContent = shortLabel(name.textContent);
+      li.insertBefore(s, li.firstChild);
+    });
+  }
+  const obs = new MutationObserver((muts) => muts.forEach((m) => inject(m.target)));
+  document.querySelectorAll(".pane-list").forEach((l) => { inject(l); obs.observe(l, { childList: true }); });
 })();
 
 /* Mobile — the hamburger opens the content-selector as a slide-in drawer; tapping the
