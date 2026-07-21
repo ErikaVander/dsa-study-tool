@@ -109,7 +109,7 @@
   .sp-dot.major { width: 12px; height: 12px; border-width: 2px; }
   .sp-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
   .topbar-actions { display: flex; gap: 8px; align-items: center; }
-  .icon-btn { font-size: 15px; line-height: 1; padding: 7px 9px; }
+  .icon-btn { font-size: 23px; line-height: 1; padding: 5px 9px; }
   .settings-wrap { position: relative; }
   .settings-menu { position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 6px 20px rgba(0,0,0,0.14); min-width: 220px; padding: 6px; z-index: 150; }
   .settings-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border: none; background: transparent; color: var(--text); font-size: 13px; border-radius: 5px; cursor: pointer; }
@@ -863,7 +863,9 @@
 
   /* Study log & notes modal */
   .sl-note { margin-bottom: 12px; }
-  .sl-note label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 4px; }
+  .sl-note label, .sl-note-label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 4px; }
+  .sl-note-view { font-size: 13px; line-height: 1.45; color: var(--text); white-space: pre-wrap; }
+  .sl-log-title { font-size: 15px; font-weight: 600; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; }
   .sl-note textarea { width: 100%; font: inherit; font-size: 13px; line-height: 1.4; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); resize: vertical; }
   .sl-log-head { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; }
   .sl-log-head h3 { font-size: 15px; font-weight: 600; }
@@ -2480,105 +2482,44 @@ function openCurriculumPanel() {
 
 // "Log" header button → study log & notes. Editable free-text notes + a synced
 // session history you can add to from any device. Backed by profile.{notes,sessionLog}.
+// Settings → "Personal customization log": VIEW-ONLY notes + session history.
+// This data is maintained for the user by Claude at session end (author-ahead ritual),
+// so it's read-only here.
 function openStudyLog() {
   const backdrop = modal(`
-    <h2>Study log &amp; notes</h2>
+    <h2>Personal customization log</h2>
+    <p class="cp-sub">Your notes and session history (maintained for you — read-only).</p>
     <div id="slNotes"></div>
-    <div class="sl-log-head">
-      <h3>Session log</h3>
-      <button class="ghost" id="slAdd">+ Add session</button>
-    </div>
-    <div id="slAddForm" hidden>
-      <div class="sl-form-grid">
-        <input id="slDate" placeholder="Date (e.g. 2026-07-17)">
-        <input id="slLesson" placeholder="Lesson / topic">
-      </div>
-      <textarea id="slSessNotes" rows="2" placeholder="What did you cover? How did it go?"></textarea>
-      <div class="modal-actions">
-        <button class="ghost" id="slCancel">Cancel</button>
-        <button class="primary" id="slSave">Save entry</button>
-      </div>
-    </div>
+    <h3 class="sl-log-title">Session log</h3>
     <div id="slLogList"></div>
     <div class="modal-actions"><button class="primary" id="slDone">Done</button></div>
   `, (bd) => {
-    // Editable notes fields
     const notesWrap = bd.querySelector("#slNotes");
     NOTE_FIELDS.forEach((f) => {
+      const val = (profile.notes && profile.notes[f.key]) || "";
       const field = document.createElement("div");
       field.className = "sl-note";
-      const lab = document.createElement("label");
-      lab.textContent = f.label;
-      const ta = document.createElement("textarea");
-      ta.rows = 3;
-      ta.value = (profile.notes && profile.notes[f.key]) || "";
-      ta.placeholder = "—";
-      ta.addEventListener("blur", () => {
-        if (ta.value !== ((profile.notes && profile.notes[f.key]) || "")) setNote(f.key, ta.value);
-      });
-      field.appendChild(lab);
-      field.appendChild(ta);
+      const lab = document.createElement("div"); lab.className = "sl-note-label"; lab.textContent = f.label;
+      const view = document.createElement("div"); view.className = "sl-note-view"; view.textContent = val || "—";
+      field.appendChild(lab); field.appendChild(view);
       notesWrap.appendChild(field);
     });
 
-    // Session log list (newest first)
     const listEl = bd.querySelector("#slLogList");
-    const renderLog = () => {
-      listEl.innerHTML = "";
-      const entries = (profile.sessionLog || []).slice().reverse();
-      if (!entries.length) {
-        const empty = document.createElement("p");
-        empty.className = "cp-sub";
-        empty.textContent = "No sessions logged yet.";
-        listEl.appendChild(empty);
-        return;
-      }
-      entries.forEach((e) => {
-        const row = document.createElement("div");
-        row.className = "sl-entry";
-        const meta = document.createElement("div");
-        meta.className = "sl-entry-meta";
-        const when = document.createElement("span");
-        when.className = "sl-entry-date";
-        when.textContent = e.date || "—";
-        const les = document.createElement("span");
-        les.className = "sl-entry-lesson";
-        les.textContent = e.lesson || "";
-        const del = document.createElement("button");
-        del.className = "sl-entry-del";
-        del.textContent = "×";
-        del.title = "Delete this entry";
-        del.addEventListener("click", () => {
-          if (confirm("Delete this session entry?")) { deleteSessionEntry(e.id); renderLog(); }
-        });
-        meta.appendChild(when); meta.appendChild(les); meta.appendChild(del);
-        row.appendChild(meta);
-        const bodyText = [e.topics, e.problems && e.problems !== "—" ? `Problems: ${e.problems}` : "", e.notes]
-          .filter(Boolean).join(" · ");
-        if (bodyText) {
-          const body = document.createElement("div");
-          body.className = "sl-entry-body";
-          body.textContent = bodyText;
-          row.appendChild(body);
-        }
-        listEl.appendChild(row);
-      });
-    };
-    renderLog();
-
-    // Add-entry form
-    const form = bd.querySelector("#slAddForm");
-    bd.querySelector("#slAdd").addEventListener("click", () => { form.hidden = !form.hidden; if (!form.hidden) bd.querySelector("#slDate").focus(); });
-    bd.querySelector("#slCancel").addEventListener("click", () => { form.hidden = true; });
-    bd.querySelector("#slSave").addEventListener("click", () => {
-      const date = bd.querySelector("#slDate").value.trim();
-      const lesson = bd.querySelector("#slLesson").value.trim();
-      const notes = bd.querySelector("#slSessNotes").value.trim();
-      if (!date && !lesson && !notes) { form.hidden = true; return; }
-      addSessionEntry({ date, lesson, topics: "", problems: "", notes });
-      bd.querySelector("#slDate").value = ""; bd.querySelector("#slLesson").value = ""; bd.querySelector("#slSessNotes").value = "";
-      form.hidden = true;
-      renderLog();
+    const entries = (profile.sessionLog || []).slice().reverse();
+    if (!entries.length) {
+      const empty = document.createElement("p"); empty.className = "cp-sub"; empty.textContent = "No sessions logged yet."; listEl.appendChild(empty);
+    } else entries.forEach((e) => {
+      const row = document.createElement("div"); row.className = "sl-entry";
+      const meta = document.createElement("div"); meta.className = "sl-entry-meta";
+      const when = document.createElement("span"); when.className = "sl-entry-date"; when.textContent = e.date || "—";
+      const les = document.createElement("span"); les.className = "sl-entry-lesson"; les.textContent = e.lesson || "";
+      meta.appendChild(when); meta.appendChild(les);
+      row.appendChild(meta);
+      const bodyText = [e.topics, e.problems && e.problems !== "—" ? `Problems: ${e.problems}` : "", e.notes]
+        .filter(Boolean).join(" · ");
+      if (bodyText) { const body = document.createElement("div"); body.className = "sl-entry-body"; body.textContent = bodyText; row.appendChild(body); }
+      listEl.appendChild(row);
     });
 
     bd.querySelector("#slDone").addEventListener("click", () => backdrop.remove());
@@ -2590,13 +2531,10 @@ function openStudyLog() {
 function openReviewQueue() {
   const backdrop = modal(`
     <h2>Review queue</h2>
+    <p class="cp-sub">Your spaced-repetition concepts (maintained for you — read-only).</p>
     <div class="rq-bar">
-      <div class="rq-session">Session <button class="rq-step" id="rqDown">−</button><span id="rqSess"></span><button class="rq-step" id="rqUp">+</button></div>
+      <div class="rq-session">Session <span id="rqSess"></span></div>
       <span class="cp-sub" id="rqDueCount"></span>
-    </div>
-    <div class="rq-add">
-      <input id="rqNew" placeholder="Add a concept to track…">
-      <button class="ghost" id="rqAdd">Add</button>
     </div>
     <div id="rqList"></div>
     <div class="modal-actions"><button class="primary" id="rqDone">Done</button></div>
@@ -2634,10 +2572,7 @@ function openReviewQueue() {
         const badge = document.createElement("span");
         badge.className = "rq-badge";
         badge.textContent = locked ? "locked in" : due ? "due" : `next: S${r.nextReview ?? "?"}`;
-        const del = document.createElement("button");
-        del.className = "sl-entry-del"; del.textContent = "×"; del.title = "Stop tracking";
-        del.addEventListener("click", () => { if (confirm("Remove this concept from the queue?")) { deleteReviewConcept(r.id); render(); } });
-        head.appendChild(name); head.appendChild(badge); head.appendChild(del);
+        head.appendChild(name); head.appendChild(badge);
         row.appendChild(head);
 
         const meta = document.createElement("div");
@@ -2648,32 +2583,10 @@ function openReviewQueue() {
         if (r.status) {
           const st = document.createElement("div"); st.className = "rq-status"; st.textContent = r.status; row.appendChild(st);
         }
-        if (!locked) {
-          const acts = document.createElement("div");
-          acts.className = "rq-acts";
-          const nailed = document.createElement("button");
-          nailed.className = "rq-act nailed"; nailed.textContent = "Nailed";
-          nailed.addEventListener("click", () => { reviewItem(r.id, "nailed"); render(); });
-          const struggled = document.createElement("button");
-          struggled.className = "rq-act struggled"; struggled.textContent = "Struggled";
-          struggled.addEventListener("click", () => { reviewItem(r.id, "struggled"); render(); });
-          acts.appendChild(nailed); acts.appendChild(struggled);
-          row.appendChild(acts);
-        }
         listEl.appendChild(row);
       });
     };
 
-    bd.querySelector("#rqDown").addEventListener("click", () => { setCurrentSession((profile.currentSession || 1) - 1); render(); });
-    bd.querySelector("#rqUp").addEventListener("click", () => { setCurrentSession((profile.currentSession || 1) + 1); render(); });
-    const addConcept = () => {
-      const inp = bd.querySelector("#rqNew");
-      const v = inp.value.trim();
-      if (!v) return;
-      addReviewConcept(v); inp.value = ""; render();
-    };
-    bd.querySelector("#rqAdd").addEventListener("click", addConcept);
-    bd.querySelector("#rqNew").addEventListener("keydown", (e) => { if (e.key === "Enter") addConcept(); });
     bd.querySelector("#rqDone").addEventListener("click", () => backdrop.remove());
     render();
   });
