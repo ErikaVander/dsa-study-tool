@@ -151,6 +151,7 @@
     .syllabus-progress { display: none; }
     .main-header { padding: 14px 16px; }
     .main-body { padding: 16px; }
+    .flashcards-grid { grid-template-columns: 1fr; }   /* one card per row on phones — never overflow */
 
     /* #13 — the 4 tabs become a bottom tab bar pinned to the screen. */
     .tabs {
@@ -259,6 +260,13 @@
   }
   .main-header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
   .main-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  /* Edit/delete icons sit to the LEFT of the flashcards title (trash, then pencil, then title) */
+  .title-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .icon-action { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-muted); cursor: pointer; padding: 0; transition: background 0.12s, color 0.12s, border-color 0.12s; }
+  .icon-action svg { width: 17px; height: 17px; fill: currentColor; display: block; }
+  .icon-action:hover { background: var(--bg-soft); color: var(--text); border-color: var(--text-dim); }
+  .icon-action:active { transform: translateY(1px); }
+  .icon-action-danger:hover { color: #dc2626; border-color: #dc2626; }
   .main-body { flex: 1; overflow-y: auto; padding: 24px 32px; }
 
   .placeholder { color: var(--text-dim); text-align: center; padding: 64px 16px; font-size: 14px; }
@@ -1048,12 +1056,14 @@
     </aside>
     <div class="main-pane">
       <div class="main-header">
-        <h1 id="currentCatTitle">—</h1>
+        <div class="title-group">
+          <button id="deleteCatBtn" class="icon-action icon-action-danger" title="Delete category" aria-label="Delete category" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+          <button id="renameCatBtn" class="icon-action" title="Rename category" aria-label="Rename category" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+          <h1 id="currentCatTitle">—</h1>
+        </div>
         <div class="main-controls">
           <button id="viewModeBtn" class="toggle" hidden>Single</button>
           <button id="editModeBtn" class="toggle" hidden>Edit</button>
-          <button id="renameCatBtn" class="ghost" hidden>Rename</button>
-          <button id="deleteCatBtn" class="danger" hidden>Delete</button>
           <button id="addCardBtn" class="primary" hidden>+ Card</button>
         </div>
       </div>
@@ -3258,7 +3268,7 @@ function renderCardsBody() {
     const cat = state.categories.find(c => c.id === activeCategoryId);
     const collapsible = document.createElement("details");
     collapsible.className = "collapsible";
-    collapsible.open = !!cat.summary || cards.length === 0;
+    collapsible.open = false;   // Overview & Quick add starts collapsed
     collapsible.innerHTML = `
       <summary>Overview &amp; Quick add</summary>
       <div class="collapsible-content">
