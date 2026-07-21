@@ -109,6 +109,14 @@
   .sp-dot.major { width: 12px; height: 12px; border-width: 2px; }
   .sp-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
   .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .icon-btn { font-size: 15px; line-height: 1; padding: 7px 9px; }
+  .settings-wrap { position: relative; }
+  .settings-menu { position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 6px 20px rgba(0,0,0,0.14); min-width: 220px; padding: 6px; z-index: 150; }
+  .settings-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border: none; background: transparent; color: var(--text); font-size: 13px; border-radius: 5px; cursor: pointer; }
+  .settings-item:hover { background: rgba(127,127,127,0.10); }
+  .settings-sep { height: 1px; background: var(--border); margin: 5px 4px; }
+  .avatar-btn { padding: 0; width: 32px; height: 32px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border); background-size: cover; background-position: center; background-repeat: no-repeat; font-size: 13px; font-weight: 600; color: var(--text-muted); flex: 0 0 auto; }
+  @media (min-width: 761px) { .mobile-only { display: none; } }
   /* Narrow screens (phones): let the header wrap instead of overflowing, and drop the
      progress bar onto its own full-width row below the title/tabs/actions. */
   @media (max-width: 760px) {
@@ -934,12 +942,24 @@
   </div>
   <div class="topbar-actions">
     <span id="cloudStatus" class="cloud-status" title="Cloud sync status" hidden></span>
-    <button id="reviewBtn" class="ghost" title="Spaced-repetition review queue">Review</button>
-    <button id="logBtn" class="ghost" title="Study log &amp; notes">Log</button>
+    <div class="settings-wrap">
+      <button id="settingsBtn" class="ghost icon-btn" title="Settings" aria-label="Settings">⚙</button>
+      <div id="settingsMenu" class="settings-menu" hidden>
+        <button class="settings-item" data-act="export">Export flashcards</button>
+        <button class="settings-item" data-act="import">Import flashcards</button>
+        <div class="settings-sep"></div>
+        <button class="settings-item" data-act="review">Review queue</button>
+        <button class="settings-item" data-act="log">Personal customization log</button>
+        <button class="settings-item mobile-only" data-act="progress">View progress</button>
+      </div>
+    </div>
     <button id="authBtn" class="ghost" title="Sign in with Google to sync across devices" hidden>Sign in</button>
-    <button id="connectBtn" class="ghost" title="Connect to your study-tool folder so lessons + quizzes sync to JSON files on disk">Connect</button>
-    <button id="exportBtn" class="ghost" title="Export flashcards as JSON">Export</button>
-    <button id="importBtn" class="ghost" title="Import flashcards JSON">Import</button>
+    <!-- legacy controls kept hidden; the settings menu triggers their behavior -->
+    <button id="reviewBtn" hidden></button>
+    <button id="logBtn" hidden></button>
+    <button id="connectBtn" hidden></button>
+    <button id="exportBtn" hidden></button>
+    <button id="importBtn" hidden></button>
     <input id="importFile" type="file" accept=".json" hidden>
   </div>
 </header>
@@ -3408,6 +3428,27 @@ document.getElementById("editModeBtn").addEventListener("click", () => {
 document.getElementById("syllabusProgress").addEventListener("click", openCurriculumPanel);
 document.getElementById("logBtn").addEventListener("click", openStudyLog);
 document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
+
+/* Settings menu (⚙) — dropdown next to the avatar; items trigger the (now hidden) legacy controls */
+(() => {
+  const btn = document.getElementById("settingsBtn");
+  const menu = document.getElementById("settingsMenu");
+  btn.addEventListener("click", (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+  menu.addEventListener("click", (e) => {
+    const item = e.target.closest(".settings-item");
+    if (!item) return;
+    menu.hidden = true;
+    const act = item.dataset.act;
+    if (act === "export") document.getElementById("exportBtn").click();
+    else if (act === "import") document.getElementById("importBtn").click();
+    else if (act === "review") openReviewQueue();
+    else if (act === "log") openStudyLog();
+    else if (act === "progress") openCurriculumPanel();
+  });
+})();
 document.getElementById("addCatBtn").addEventListener("click", () => {
   const name = prompt("New category name:");
   if (!name) return;
@@ -5141,11 +5182,14 @@ cloud = {
     if (!btn) return;
     btn.hidden = false;
     if (user && !user.isAnonymous) {
-      btn.textContent = user.email || "Account";
+      btn.classList.add("avatar-btn"); btn.classList.remove("ghost");
+      if (user.photoURL) { btn.textContent = ""; btn.style.backgroundImage = `url("${user.photoURL}")`; }
+      else { btn.style.backgroundImage = ""; btn.textContent = ((user.email || "?").trim()[0] || "?").toUpperCase(); }
       btn.title = "Signed in as " + (user.email || "") + " — click to sign out";
       btn.dataset.mode = "out";
     } else {
-      btn.textContent = "Sign in";
+      btn.classList.remove("avatar-btn"); btn.classList.add("ghost");
+      btn.style.backgroundImage = ""; btn.textContent = "Sign in";
       btn.title = "Sign in with Google to sync across all your devices";
       btn.dataset.mode = "in";
     }
