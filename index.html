@@ -153,6 +153,11 @@
     flex-direction: column;
     overflow: hidden;
   }
+  .pane-collapse-btn { border: none; background: transparent; color: var(--text-muted); font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+  .pane-collapse-btn:hover { color: var(--text); }
+  body.pane-collapsed .pane { display: none; }
+  .pane-expand-btn { display: none; position: fixed; left: 8px; top: 64px; z-index: 60; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  body.pane-collapsed .pane-expand-btn { display: block; }
   .pane-header {
     display: flex;
     justify-content: space-between;
@@ -3341,6 +3346,34 @@ document.getElementById("editModeBtn").addEventListener("click", () => {
 document.getElementById("syllabusProgress").addEventListener("click", openCurriculumPanel);
 document.getElementById("logBtn").addEventListener("click", openStudyLog);
 document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
+
+/* Collapsible left side pane (content selector) — desktop. One shared body class hides
+   every view's .pane; a floating » button brings it back. State persists in prefs. */
+(() => {
+  function setPaneCollapsed(c) {
+    document.body.classList.toggle("pane-collapsed", c);
+    prefs.paneCollapsed = c; savePrefs();
+  }
+  document.querySelectorAll(".pane-header").forEach((h) => {
+    const b = document.createElement("button");
+    b.className = "pane-collapse-btn";
+    b.type = "button";
+    b.title = "Collapse panel";
+    b.setAttribute("aria-label", "Collapse panel");
+    b.textContent = "«";
+    b.addEventListener("click", () => setPaneCollapsed(true));
+    h.appendChild(b);
+  });
+  const exp = document.createElement("button");
+  exp.className = "pane-expand-btn";
+  exp.type = "button";
+  exp.title = "Show panel";
+  exp.setAttribute("aria-label", "Show panel");
+  exp.textContent = "»";
+  exp.addEventListener("click", () => setPaneCollapsed(false));
+  document.body.appendChild(exp);
+  if (prefs.paneCollapsed) document.body.classList.add("pane-collapsed");
+})();
 
 /* Settings menu (⚙) — dropdown next to the avatar; items trigger the (now hidden) legacy controls */
 (() => {
