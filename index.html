@@ -99,7 +99,7 @@
   .tab.active { color: var(--text); background: var(--accent-soft); }
   /* Curriculum progress — a vertical rail of connected dots on the right edge of the app
      (one dot per chapter, larger at each phase start). Fills top-down as chapters are learned. */
-  .syllabus-progress { flex: 0 0 auto; width: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px 8px; border-left: 1px solid var(--border); background: var(--bg-soft); }
+  .syllabus-progress { flex: 0 0 auto; width: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 18px 8px; border-right: 1px solid var(--border); background: var(--bg-soft); }
   .sp-dots { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 16px; min-height: 160px; }
   .sp-dots::before, .sp-dots::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); width: 2px; border-radius: 2px; }
   .sp-dots::before { top: 5px; bottom: 5px; background: var(--border); }                          /* full track */
@@ -145,7 +145,7 @@
     }
     body.pane-open .pane { transform: translateX(0); }
     body.pane-collapsed .pane { display: flex; }   /* desktop-collapse is inert on mobile */
-    .pane-collapse-btn, .pane-expand-btn { display: none !important; }
+    .desktop-only { display: none; }
   }
 
   /* Plan / Job Search Roadmap page */
@@ -175,11 +175,10 @@
     flex-direction: column;
     overflow: hidden;
   }
-  .pane-collapse-btn { border: none; background: transparent; color: var(--text-muted); font-size: 16px; line-height: 1; cursor: pointer; padding: 2px 4px; }
-  .pane-collapse-btn:hover { color: var(--text); }
-  body.pane-collapsed .pane { display: none; }
-  .pane-expand-btn { display: none; position: fixed; left: 8px; top: 64px; z-index: 60; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-  body.pane-collapsed .pane-expand-btn { display: block; }
+  /* One header toggle collapses BOTH the progress rail and the content selector together. */
+  body.pane-collapsed .pane, body.pane-collapsed .syllabus-progress { display: none; }
+  .pane-toggle-btn { font-size: 20px; line-height: 1; padding: 4px 8px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+  .pane-toggle-btn:hover { color: var(--text); }
   .pane-header {
     display: flex;
     justify-content: space-between;
@@ -976,6 +975,7 @@
 
 <header class="topbar">
   <button class="mobile-only hamburger-btn" id="hamburgerBtn" type="button" title="Choose content" aria-label="Choose content">☰</button>
+  <button class="desktop-only pane-toggle-btn" id="paneToggle" type="button" title="Hide panels" aria-label="Hide panels">«</button>
   <div class="title">Study</div>
   <nav class="tabs">
     <button class="tab active" data-tab="cards">Flashcards</button>
@@ -1008,6 +1008,10 @@
 </header>
 
 <main>
+  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress">
+    <div class="sp-dots" id="spDots" hidden></div>
+    <span class="sp-label" id="spLabel" hidden></span>
+  </div>
   <section id="cardsView" class="view active">
     <aside class="pane">
       <div class="pane-header">
@@ -1098,10 +1102,6 @@
       </div>
     </div>
   </section>
-  <div class="syllabus-progress" id="syllabusProgress" title="Curriculum progress">
-    <div class="sp-dots" id="spDots" hidden></div>
-    <span class="sp-label" id="spLabel" hidden></span>
-  </div>
 </main>
 
 <div class="pane-backdrop" id="paneBackdrop" hidden></div>
@@ -3437,32 +3437,19 @@ document.getElementById("syllabusProgress").addEventListener("click", openCurric
 document.getElementById("logBtn").addEventListener("click", openStudyLog);
 document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
 
-/* Collapsible left side pane (content selector) — desktop. One shared body class hides
-   every view's .pane; a floating » button brings it back. State persists in prefs. */
+/* Collapsible left side panels (progress rail + content selector) — desktop. One header
+   toggle hides/shows both together via a body class; its glyph flips. State persists. */
 (() => {
+  const toggle = document.getElementById("paneToggle");
   function setPaneCollapsed(c) {
     document.body.classList.toggle("pane-collapsed", c);
+    toggle.textContent = c ? "»" : "«";
+    toggle.title = c ? "Show panels" : "Hide panels";
+    toggle.setAttribute("aria-label", toggle.title);
     prefs.paneCollapsed = c; savePrefs();
   }
-  document.querySelectorAll(".pane-header").forEach((h) => {
-    const b = document.createElement("button");
-    b.className = "pane-collapse-btn";
-    b.type = "button";
-    b.title = "Collapse panel";
-    b.setAttribute("aria-label", "Collapse panel");
-    b.textContent = "«";
-    b.addEventListener("click", () => setPaneCollapsed(true));
-    h.appendChild(b);
-  });
-  const exp = document.createElement("button");
-  exp.className = "pane-expand-btn";
-  exp.type = "button";
-  exp.title = "Show panel";
-  exp.setAttribute("aria-label", "Show panel");
-  exp.textContent = "»";
-  exp.addEventListener("click", () => setPaneCollapsed(false));
-  document.body.appendChild(exp);
-  if (prefs.paneCollapsed) document.body.classList.add("pane-collapsed");
+  toggle.addEventListener("click", () => setPaneCollapsed(!document.body.classList.contains("pane-collapsed")));
+  setPaneCollapsed(!!prefs.paneCollapsed);
 })();
 
 /* Mobile — the hamburger opens the content-selector as a slide-in drawer; tapping the
