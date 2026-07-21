@@ -111,6 +111,8 @@
   .sp-label { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.4; }
   .topbar-actions { display: flex; gap: 8px; align-items: center; }
   .icon-btn { font-size: 23px; line-height: 1; padding: 5px 9px; }
+  .hamburger-btn { font-size: 22px; line-height: 1; padding: 4px 8px; background: transparent; border: none; color: var(--text); cursor: pointer; }
+  .pane-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 55; }
   .settings-wrap { position: relative; }
   .settings-menu { position: absolute; top: 100%; right: 0; margin-top: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 6px 20px rgba(0,0,0,0.14); min-width: 220px; padding: 6px; z-index: 150; }
   .settings-item { display: block; width: 100%; text-align: left; padding: 8px 10px; border: none; background: transparent; color: var(--text); font-size: 13px; border-radius: 5px; cursor: pointer; }
@@ -121,10 +123,29 @@
   /* Narrow screens (phones): let the header wrap instead of overflowing. The vertical
      progress rail is hidden on mobile — progress lives on the View Progress page instead. */
   @media (max-width: 760px) {
-    .topbar { flex-wrap: wrap; gap: 10px 14px; padding: 12px 16px; }
+    .topbar { gap: 12px; padding: 10px 14px; }
     .topbar-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
     .syllabus-progress { display: none; }
-    .tab { padding: 6px 10px; }
+
+    /* #13 — the 4 tabs become a bottom tab bar pinned to the screen. */
+    .tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+      display: flex; justify-content: space-around; gap: 0;
+      background: var(--bg); border-top: 1px solid var(--border);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    }
+    .tab { flex: 1; text-align: center; padding: 8px 4px; font-size: 12px; }
+    main { padding-bottom: 62px; }   /* clear the fixed bottom bar */
+
+    /* #14 — content selector becomes a slide-in drawer, opened by the hamburger. */
+    .pane {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 82%; max-width: 320px;
+      z-index: 60; transform: translateX(-100%); transition: transform 0.2s ease;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.25);
+    }
+    body.pane-open .pane { transform: translateX(0); }
+    body.pane-collapsed .pane { display: flex; }   /* desktop-collapse is inert on mobile */
+    .pane-collapse-btn, .pane-expand-btn { display: none !important; }
   }
 
   /* Plan / Job Search Roadmap page */
@@ -830,6 +851,23 @@
   .field { margin-bottom: 12px; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 
+  /* View Progress page (mobile) — read-only overview */
+  .pv-summary { text-align: center; margin-bottom: 18px; }
+  .pv-pct { font-size: 34px; font-weight: 700; color: var(--good); line-height: 1.1; }
+  .pv-pct-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .pv-track { height: 8px; background: var(--border); border-radius: 4px; margin-top: 12px; overflow: hidden; }
+  .pv-fill { height: 100%; background: var(--good); border-radius: 4px; }
+  .pv-phase { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }
+  .pv-phase > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; font-weight: 600; font-size: 14px; list-style: none; }
+  .pv-phase > summary::-webkit-details-marker { display: none; }
+  .pv-phase-count { font-size: 12px; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+  .pv-chapters { list-style: none; padding: 0 14px 10px; margin: 0; }
+  .pv-chapter { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; font-size: 13px; color: var(--text-muted); }
+  .pv-chapter.known { color: var(--text); }
+  .pv-mark { width: 14px; flex: 0 0 auto; text-align: center; color: var(--text-dim); }
+  .pv-chapter.known .pv-mark { color: var(--good); }
+  .pv-chapter.learning .pv-mark { color: #f59e0b; }
+
   /* Curriculum progress panel (click the header progress bar) */
   .cp-sub { font-size: 13px; color: var(--text-muted); margin: -8px 0 14px; }
   .cp-phase { margin-bottom: 14px; }
@@ -937,6 +975,7 @@
 <body>
 
 <header class="topbar">
+  <button class="mobile-only hamburger-btn" id="hamburgerBtn" type="button" title="Choose content" aria-label="Choose content">☰</button>
   <div class="title">Study</div>
   <nav class="tabs">
     <button class="tab active" data-tab="cards">Flashcards</button>
@@ -1065,6 +1104,7 @@
   </div>
 </main>
 
+<div class="pane-backdrop" id="paneBackdrop" hidden></div>
 <div id="toast" class="toast"></div>
 
 <!-- Firebase SDK (compat build → global `firebase`) + project config. If the CDN is
@@ -2491,6 +2531,55 @@ function openCurriculumPanel() {
 // Settings → "Personal customization log": VIEW-ONLY notes + session history.
 // This data is maintained for the user by Claude at session end (author-ahead ritual),
 // so it's read-only here.
+// Mobile "View progress" page: read-only. Overall % complete, then each phase as a
+// collapsible <details> listing its chapters with a status marker. Uses the same
+// global-tree + per-user-overlay data as the vertical rail.
+function openProgressView() {
+  const backdrop = modal(`
+    <h2>Your progress</h2>
+    <div id="pvSummary" class="pv-summary"></div>
+    <div id="pvPhases"></div>
+    <div class="modal-actions"><button class="primary" id="pvDone">Done</button></div>
+  `, (bd) => {
+    const items = buildCurriculumItems() || [];
+    const total = items.length;
+    const known = items.filter((x) => x.status === "known").length;
+    const learning = items.filter((x) => x.status === "learning").length;
+    const pct = total ? Math.round((known / total) * 100) : 0;
+    bd.querySelector("#pvSummary").innerHTML =
+      `<div class="pv-pct">${pct}%</div>` +
+      `<div class="pv-pct-sub">${known} of ${total} chapters known${learning ? ` · ${learning} learning` : ""}</div>` +
+      `<div class="pv-track"><div class="pv-fill" style="width:${pct}%"></div></div>`;
+    const wrap = bd.querySelector("#pvPhases");
+    const phases = resolveCurriculumPhases() || [];
+    phases.forEach((ph) => {
+      const chs = ph.chapters || [];
+      const k = chs.filter((c) => chapterStatus(c.id) === "known").length;
+      const det = document.createElement("details");
+      det.className = "pv-phase";
+      const sum = document.createElement("summary");
+      const name = document.createElement("span"); name.className = "pv-phase-name"; name.textContent = ph.phase || ph.title || "";
+      const cnt = document.createElement("span"); cnt.className = "pv-phase-count"; cnt.textContent = `${k}/${chs.length}`;
+      sum.appendChild(name); sum.appendChild(cnt);
+      det.appendChild(sum);
+      const ul = document.createElement("ul");
+      ul.className = "pv-chapters";
+      chs.forEach((c) => {
+        const st = chapterStatus(c.id);
+        const li = document.createElement("li");
+        li.className = "pv-chapter " + st;
+        const mk = document.createElement("span"); mk.className = "pv-mark"; mk.textContent = st === "known" ? "✓" : st === "learning" ? "…" : "○";
+        const tt = document.createElement("span"); tt.textContent = c.title || c.id;
+        li.appendChild(mk); li.appendChild(tt);
+        ul.appendChild(li);
+      });
+      det.appendChild(ul);
+      wrap.appendChild(det);
+    });
+    bd.querySelector("#pvDone").addEventListener("click", () => backdrop.remove());
+  });
+}
+
 function openStudyLog() {
   const backdrop = modal(`
     <h2>Personal customization log</h2>
@@ -3376,6 +3465,22 @@ document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
   if (prefs.paneCollapsed) document.body.classList.add("pane-collapsed");
 })();
 
+/* Mobile — the hamburger opens the content-selector as a slide-in drawer; tapping the
+   backdrop, a content item, or a bottom tab closes it. (Inert on desktop: no hamburger.) */
+(() => {
+  const backdrop = document.getElementById("paneBackdrop");
+  function openDrawer(open) {
+    document.body.classList.toggle("pane-open", open);
+    backdrop.hidden = !open;
+  }
+  document.getElementById("hamburgerBtn").addEventListener("click", () =>
+    openDrawer(!document.body.classList.contains("pane-open")));
+  backdrop.addEventListener("click", () => openDrawer(false));
+  document.querySelectorAll(".pane-list").forEach((list) =>
+    list.addEventListener("click", (e) => { if (e.target.closest("li")) openDrawer(false); }));
+  document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => openDrawer(false)));
+})();
+
 /* Settings menu (⚙) — dropdown next to the avatar; items trigger the (now hidden) legacy controls */
 (() => {
   const btn = document.getElementById("settingsBtn");
@@ -3393,7 +3498,7 @@ document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
     else if (act === "import") document.getElementById("importBtn").click();
     else if (act === "review") openReviewQueue();
     else if (act === "log") openStudyLog();
-    else if (act === "progress") openCurriculumPanel();
+    else if (act === "progress") openProgressView();
   });
 })();
 document.getElementById("addCatBtn").addEventListener("click", () => {
