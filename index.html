@@ -129,11 +129,11 @@
        header « / » animates the whole thing and, when collapsed, hides the rail and shrinks
        the selector to a short-label strip (1.1, MobX, QA 1 …) instead of vanishing. */
     .syllabus-progress { position: fixed; left: 0; top: 0; bottom: 0; width: 56px; z-index: 30; transition: transform 0.22s ease; }
-    .pane { position: fixed; left: 56px; top: 0; bottom: 0; width: 244px; z-index: 30; transition: left 0.22s ease, width 0.22s ease; }
+    .view .pane { position: fixed; left: 56px; top: 0; bottom: 0; width: 244px; z-index: 30; transition: left 0.22s ease, width 0.22s ease; }
     .topbar, main { margin-left: 300px; transition: margin-left 0.22s ease; }
 
     body.pane-collapsed .syllabus-progress { transform: translateX(-100%); }
-    body.pane-collapsed .pane { left: 0; width: 64px; }
+    body.pane-collapsed .view .pane { left: 0; width: 64px; }
     body.pane-collapsed .topbar, body.pane-collapsed main { margin-left: 64px; }
     body.pane-collapsed .pane-header h2, body.pane-collapsed .pane-header .icon { display: none; }
     body.pane-collapsed .pane-header { justify-content: center; padding: 16px 8px; }
@@ -197,8 +197,8 @@
     flex-direction: column;
     overflow: hidden;
   }
-  /* One header toggle collapses BOTH the progress rail and the content selector together. */
-  body.pane-collapsed .pane, body.pane-collapsed .syllabus-progress { display: none; }
+  /* Desktop collapse is handled in the min-width media block (rail slides out, selector
+     shrinks to short labels). The toggle glyph flips « / » in JS. */
   .pane-toggle-btn { font-size: 20px; line-height: 1; padding: 4px 8px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
   .pane-toggle-btn:hover { color: var(--text); }
   .pane-header {
