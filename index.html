@@ -152,6 +152,9 @@
     .main-header { padding: 14px 16px; }
     .main-body { padding: 16px; }
     .flashcards-grid { grid-template-columns: 1fr; }   /* one card per row on phones — never overflow */
+    /* No hover on touch — show the foot buttons always so the FIRST tap acts (opens the
+       pop-up) instead of being spent revealing them. */
+    .card-foot { opacity: 1; pointer-events: auto; }
 
     /* #13 — the 4 tabs become a bottom tab bar pinned to the screen. */
     .tabs {
