@@ -199,16 +199,18 @@
   }
   /* Desktop collapse is handled in the min-width media block (rail slides out, selector
      shrinks to short labels). The toggle glyph flips « / » in JS. */
-  .pane-toggle-btn { font-size: 20px; line-height: 1; padding: 4px 8px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+  .pane-toggle-btn { font-size: 20px; line-height: 1; padding: 0 6px 0 0; margin-right: 2px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; flex: 0 0 auto; }
   .pane-toggle-btn:hover { color: var(--text); }
   .pane-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 8px;
     align-items: center;
     padding: 16px;
     border-bottom: 1px solid var(--border);
   }
   .pane-header h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; }
+  .pane-header .icon { margin-left: auto; }   /* keep the + add button pinned right */
   .pane-list { flex: 1; overflow-y: auto; padding: 8px; list-style: none; }
   .pane-list li {
     padding: 8px 12px;
@@ -997,7 +999,6 @@
 
 <header class="topbar">
   <button class="mobile-only hamburger-btn" id="hamburgerBtn" type="button" title="Choose content" aria-label="Choose content">☰</button>
-  <button class="desktop-only pane-toggle-btn" id="paneToggle" type="button" title="Hide panels" aria-label="Hide panels">«</button>
   <div class="title">Study</div>
   <nav class="tabs">
     <button class="tab active" data-tab="cards">Flashcards</button>
@@ -3462,15 +3463,26 @@ document.getElementById("reviewBtn").addEventListener("click", openReviewQueue);
 /* Collapsible left side panels (progress rail + content selector) — desktop. One header
    toggle hides/shows both together via a body class; its glyph flips. State persists. */
 (() => {
-  const toggle = document.getElementById("paneToggle");
+  const toggles = [];
   function setPaneCollapsed(c) {
     document.body.classList.toggle("pane-collapsed", c);
-    toggle.textContent = c ? "»" : "«";
-    toggle.title = c ? "Show panels" : "Hide panels";
-    toggle.setAttribute("aria-label", toggle.title);
+    toggles.forEach((t) => {
+      t.textContent = c ? "»" : "«";
+      t.title = c ? "Show panels" : "Hide panels";
+      t.setAttribute("aria-label", t.title);
+    });
     prefs.paneCollapsed = c; savePrefs();
   }
-  toggle.addEventListener("click", () => setPaneCollapsed(!document.body.classList.contains("pane-collapsed")));
+  // The toggle lives at the top of the selector menu itself (one per view's pane-header),
+  // not out in the header. All copies drive the same collapse state.
+  document.querySelectorAll(".pane-header").forEach((h) => {
+    const t = document.createElement("button");
+    t.className = "pane-toggle-btn desktop-only";
+    t.type = "button";
+    t.addEventListener("click", () => setPaneCollapsed(!document.body.classList.contains("pane-collapsed")));
+    h.insertBefore(t, h.firstChild);
+    toggles.push(t);
+  });
   setPaneCollapsed(!!prefs.paneCollapsed);
 })();
 
