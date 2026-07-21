@@ -902,6 +902,12 @@
   .pv-chapter.known .pv-mark { color: var(--good); }
   .pv-chapter.learning .pv-mark { color: #f59e0b; }
 
+  /* Card pop-up (mobile tap) — full front + back, scrollable via the modal's own overflow */
+  .cm-section { margin-bottom: 18px; }
+  .cm-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 6px; }
+  .cm-face { white-space: pre-wrap; text-align: left; line-height: 1.5; font-size: 15px; word-break: break-word; }
+  .cm-front { font-weight: 500; }
+
   /* Curriculum progress panel (click the header progress bar) */
   .cp-sub { font-size: 13px; color: var(--text-muted); margin: -8px 0 14px; }
   .cp-phase { margin-bottom: 14px; }
@@ -3337,6 +3343,26 @@ function renderCardsBody() {
   }
 }
 
+// Full-content pop-up for a card (mobile tap) — shows front + back with no clipping,
+// rendering each side through setFaceContent so code/prose look the same as on the card.
+function openCardModal(card) {
+  const backdrop = modal(`
+    <div class="cm-section">
+      <div class="cm-label">Front</div>
+      <div class="cm-face cm-front face-content" id="cmFront"></div>
+    </div>
+    <div class="cm-section">
+      <div class="cm-label">Back</div>
+      <div class="cm-face face-content" id="cmBack"></div>
+    </div>
+    <div class="modal-actions"><button class="primary" id="cmDone">Done</button></div>
+  `, (bd) => {
+    setFaceContent(bd.querySelector("#cmFront"), card.front);
+    setFaceContent(bd.querySelector("#cmBack"), card.back);
+    bd.querySelector("#cmDone").addEventListener("click", () => backdrop.remove());
+  });
+}
+
 function renderFlashcard(card) {
   const wrap = document.createElement("div");
   wrap.className = "flashcard-wrap";
@@ -3411,6 +3437,9 @@ function renderFlashcard(card) {
     setFaceContent(wrap.querySelector(".flashcard-front .face-content"), card.front);
     setFaceContent(wrap.querySelector(".flashcard-back .face-content"), card.back);
     flashcardEl.addEventListener("click", () => {
+      // On phones the card is too small to show a long back without clipping, so tapping
+      // opens a scrollable pop-up with the full front + back. Desktop keeps the flip.
+      if (window.matchMedia("(max-width: 760px)").matches) { openCardModal(card); return; }
       cardFlippedState[card.id] = !cardFlippedState[card.id];
       flashcardEl.classList.toggle("flipped");
     });
